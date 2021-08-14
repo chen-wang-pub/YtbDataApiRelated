@@ -36,6 +36,9 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
             item_id = item['id']['channelId']
 
         # TODO: need to rewrite the following part with the $addtoset updateone upsert, and add test to it
+        # TODO: Add check that the insert succeeded and return the result
+        # TODO: Add error handling and add testing
+
 
         cursor = collection.find({'etag': etag}, {'query_string': 1, '_id':0})
         doc = next(cursor, None)
@@ -45,7 +48,7 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
                 current_queries.append(query_string)
         else:
             current_queries = [query_string]
-        final_record = {'etag':etag, 'kind':kind, 'item_id': item_id, 'query_string': current_queries}
+        final_record = {'etag': etag, 'kind': kind, 'item_id': item_id, 'query_string': current_queries}
         collection.replace_one({"etag": etag}, final_record, upsert=True)
 
 
