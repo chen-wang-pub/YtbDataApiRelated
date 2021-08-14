@@ -1,8 +1,9 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 import requests
 import json
 
-def storeSearchResponse(API_reply_json, query_string,db_url='localhost', db_port=1024, db_name='YtbDataApiSearched'):
+def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
+                        col_name='YtbSearchRecord'):
     """
     Expecting youtube data api response in json format as the example at the end of the file
 
@@ -11,8 +12,7 @@ def storeSearchResponse(API_reply_json, query_string,db_url='localhost', db_port
         "query_string": The query string used for querying the youtube data api
         "etag": The item's etag that is used as the unique identifier used by youtube data api
         "kind": The item's kind field in the resopnse body
-        "videoId": If the item is video, videoId will be used to store the item's external url suffix
-        "channelId": If the item is channel, channelId will be used to store the item's external url suffix
+        "item_id": The video id or channel id of the item. It's the suffix of the youtube video
     }
 
     :param API_reply_json:
@@ -23,6 +23,31 @@ def storeSearchResponse(API_reply_json, query_string,db_url='localhost', db_port
     """
     db_client = MongoClient(db_url, db_port)
     db = db_client[db_name]
+    collection = db[col_name]
+    collection.create_index([('etag', DESCENDING)], unique=True)
+
+    searched_items = api_reply_json['items']
+    for item in searched_items:
+        etag = item['etag']
+        kind = item['id']['kind']
+        if 'videoId' in item['id']:
+            item_id = item['id']['videoId']
+        else:
+            item_id = item['id']['channelId']
+
+        # TODO: need to rewrite the following part with the $addtoset updateone upsert, and add test to it
+
+        cursor = collection.find({'etag': etag}, {'query_string': 1, '_id':0})
+        doc = next(cursor, None)
+        if doc:
+            current_queries = doc['query_string']
+            if query_string not in current_queries:
+                current_queries.append(query_string)
+        else:
+            current_queries = [query_string]
+        final_record = {'etag':etag, 'kind':kind, 'item_id': item_id, 'query_string': current_queries}
+        collection.replace_one({"etag": etag}, final_record, upsert=True)
+
 
 """
 {
