@@ -38,9 +38,26 @@ class YoutubeDataApiCaller:
     """
     _documents_to_update = []
     _available_keys = []
-
+    _ytbApiUrlTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
     def __init__(self, db_url, db_port, db_name, col_name, number_of_keys=5):
+        self.db_client = MongoClient(db_url, db_port)
+        self.db = self.db_client[db_name]
+        self.col = self.db[col_name]
+        self._max_key = number_of_keys
         pass
+    @property
+    def max_key(self):
+        return self._max_key
+    @max_key.setter
+    def max_key(self, number_of_keys):
+        self._max_key = number_of_keys
+    @property
+    def ytbApiUrlTemplate(self):
+        return self._ytbApiUrlTemplate
+    @ytbApiUrlTemplate.setter
+    def ytbApiUrlTemplate(self, url):
+        self._ytbApiUrlTemplate = url
+
     def search_query(self, query_string):
         pass
     def _pull_api_key(self, number_of_keys):
@@ -58,3 +75,6 @@ def add_keys_to_db(api_keys):
     pass
 def update_db_keys_status():
     pass
+
+if __name__ == '__main__':
+    test = YoutubeDataApiCaller('localhost', 1024, 'KeyPool', 'YoutubeDataApi')
