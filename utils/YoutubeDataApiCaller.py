@@ -1,6 +1,18 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
+from pymongo.errors import DuplicateKeyError
 import requests
 import json
+import datetime
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+api_key_pool_dict = {
+    'db_url': 'localhost',
+    'db_port': 1024,
+    'db_name': 'KeyPool',
+    'col_name': 'YoutubeDataApi',
+}
+
 
 class YoutubeDataApiCaller:
     """
@@ -12,7 +24,7 @@ class YoutubeDataApiCaller:
         'key':'xxxx'
         'in_use': True/False
         'quota_exceeded' : True/False
-        'last_update_date': 'xxxx-xx-xx'/None
+        'last_update_date': 'xxxx-xx-xx'
     }
 
 
@@ -44,7 +56,9 @@ class YoutubeDataApiCaller:
         self.db = self.db_client[db_name]
         self.col = self.db[col_name]
         self._max_key = number_of_keys
-        pass
+        self._pull_api_key()
+
+
     @property
     def max_key(self):
         return self._max_key
@@ -60,19 +74,43 @@ class YoutubeDataApiCaller:
 
     def search_query(self, query_string):
         pass
-    def _pull_api_key(self, number_of_keys):
+    def _pull_api_key(self,):
         pass
     def _retry_search(self, query_string):
         pass
     def _update_key_status(self, docs_for_update):
         pass
-    def _generate_document(self, key, in_use, quota_exceeded, last_update_date):
-        pass
+    @staticmethod
+    def generate_document(key, in_use, quota_exceeded, last_update_date):
+
+        if not isinstance(key, str) or not isinstance(in_use, bool) or not isinstance(quota_exceeded, bool) or not isinstance(last_update_date, datetime.datetime):
+            return False
+        datetime_str_format = '%Y-%m-%d'
+        doc_dict = {'key':key, 'in_use': in_use, 'quota_exceeded' : quota_exceeded, 'last_update_date': last_update_date.strftime(datetime_str_format)}
+
+        return doc_dict
     def __del__(self):
         pass
 
-def add_keys_to_db(api_keys):
-    pass
+def add_keys_to_db(api_keys, db_url, db_port, db_name, col_name):
+    db_client = MongoClient(db_url, db_port)
+    db = db_client[db_name]
+    col = db[col_name]
+    col.create_index([('key', DESCENDING)], unique=True)
+
+    failed_keys = []
+
+    for api_key in api_keys:
+        doc_dict = YoutubeDataApiCaller.generate_document(api_key, False, False, datetime.now())
+        try:
+            col.insert_one(doc_dict)
+            logging.debug('record added')
+        except DuplicateKeyError:
+            logging.debug(('name already in database for {}'.format(doc_dict)))
+            failed_keys.append(api_key)
+
+    return failed_keys
+
 def update_db_keys_status():
     pass
 
