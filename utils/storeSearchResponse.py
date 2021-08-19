@@ -1,6 +1,4 @@
 from pymongo import MongoClient, DESCENDING
-import requests
-import json
 
 def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
                         col_name='YtbSearchRecord'):
@@ -15,12 +13,15 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
         "item_id": The video id or channel id of the item. It's the suffix of the youtube video
     }
 
+    api example: https://youtube.googleapis.com/youtube/v3/search?q=xxxx&key=xxxx
+    https://developers.google.com/youtube/v3/docs/search#resource
     :param API_reply_json:
     :param db_url:
     :param db_port:
     :param db_name:
     :return:
     """
+    # TODO: Need to split the response handle with the document upload
     db_client = MongoClient(db_url, db_port)
     db = db_client[db_name]
     collection = db[col_name]
@@ -32,8 +33,10 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
         kind = item['id']['kind']
         if 'videoId' in item['id']:
             item_id = item['id']['videoId']
-        else:
+        elif 'channelId':
             item_id = item['id']['channelId']
+        elif 'playlistId':
+            item_id = item['id']['playlistId']
 
         # TODO: need to rewrite the following part with the $addtoset updateone upsert, and add test to it
         # TODO: Add check that the insert succeeded and return the result
