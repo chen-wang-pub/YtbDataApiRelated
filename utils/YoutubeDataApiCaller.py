@@ -4,6 +4,9 @@ import requests
 import json
 import datetime
 import logging
+from enum import Enum, unique
+
+from HandleYtbDataAPI import storeSearchResponse
 
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
@@ -13,6 +16,10 @@ api_key_pool_dict = {
     'col_name': 'YoutubeDataApi',
 }
 
+@unique
+class YtbApiErrorEnum(Enum):
+    UNDEFINED_ERROR = 0
+    QUOTA_EXCEEDED = 1
 
 class YoutubeDataApiCaller:
     """
@@ -51,6 +58,7 @@ class YoutubeDataApiCaller:
     _documents_to_update = []
     _available_keys = []
     _ytbApiUrlTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
+    _error_msg_identifier_dict = {'QUOTA_EXCEEDED': 'you have exceeded your',}
 
     def __init__(self, db_url, db_port, db_name, col_name, number_of_keys=3):
         self.db_client = MongoClient(db_url, db_port)
@@ -75,9 +83,66 @@ class YoutubeDataApiCaller:
     def ytb_api_url_template(self, url):
         self._ytbApiUrlTemplate = url
 
-    def search_query(self, query_string):
+    @property
+    def has_available_keys(self):
+        if self._available_keys:
+            return True
+        return False
 
-        pass
+    def _check_error(self, api_reply_json):
+        """
+        Check if pre determined error exists in the response
+        return the pre-set enum error obj if exists, or enum undefined error obj, or False when no error
+        :param api_reply_json:
+        :return:
+        """
+        undefined_error = 'undefined  error'
+        if 'error' in api_reply_json:
+            # error_code = api_reply_json['error']['code']
+            error_message = api_reply_json['error']['message']
+
+            for k, v in self._error_msg_identifier_dict.items():
+                if v in error_message:
+                    return YtbApiErrorEnum['k']
+            return YtbApiErrorEnum.UNDEFINED_ERROR
+        return False
+
+    def _parse_ytb_api_response(self, api_reply_json):
+        return 'WIP'
+
+    def search_query(self, query_string):
+        if not self.has_available_keys():
+            result = self._pull_api_key()
+            if not result:
+                logging.error('error when pulling api keys while executing search_query')
+                return False
+
+        # TODO: Search in the storeSearchResponse database to check if the query_string has been used for searching.
+
+        #result = checkStoredSearchResponse(query_string)
+        #if result:
+        #   return result
+
+        try:
+            final_url = self._ytbApiUrlTemplate.format(query_string, self._available_keys[0])
+            payload = {}
+            headers = {}
+            response = requests.request("GET", final_url, headers=headers, data=payload)
+            ytb_result = json.loads(response.text)
+
+            error_obj = self._check_error(ytb_result)
+            if error_obj:
+                self._retry_search(query_string, error_obj)
+
+            result = self._parse_ytb_api_response(ytb_result)
+            # TODO: Queue this method in a thread in background
+            storeSearchResponse(ytb_result, query_string)
+
+            return result
+
+        except requests.exceptions.RequestException:
+            logging.error('error in requests module')
+            return False
 
     def _pull_api_key(self):
         temp_keys = self.col.find({'in_use': False, 'quota_exceeded': False, }, limit=self.max_key)
@@ -90,7 +155,7 @@ class YoutubeDataApiCaller:
                 self._update_key_status(temp_doc)  # should check if the status is success or not
             return len(self._available_keys)
 
-    def _retry_search(self, query_string):
+    def _retry_search(self, query_string, error_obj):
         pass
 
     def _update_key_status(self, docs_for_update):
