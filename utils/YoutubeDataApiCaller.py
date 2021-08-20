@@ -16,10 +16,12 @@ api_key_pool_dict = {
     'col_name': 'YoutubeDataApi',
 }
 
+
 @unique
 class YtbApiErrorEnum(Enum):
     UNDEFINED_ERROR = 0
     QUOTA_EXCEEDED = 1
+
 
 class YoutubeDataApiCaller:
     """
@@ -55,7 +57,6 @@ class YoutubeDataApiCaller:
 
 
     """
-    _documents_to_update = []
     _available_keys = []
     _ytbApiUrlTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
     _error_msg_identifier_dict = {'QUOTA_EXCEEDED': 'you have exceeded your',}
@@ -132,7 +133,7 @@ class YoutubeDataApiCaller:
 
             error_obj = self._check_error(ytb_result)
             if error_obj:
-                self._retry_search(query_string, error_obj)
+                return self._retry_search(query_string, error_obj)
 
             result = self._parse_ytb_api_response(ytb_result)
             # TODO: Queue this method in a thread in background
@@ -156,7 +157,22 @@ class YoutubeDataApiCaller:
             return len(self._available_keys)
 
     def _retry_search(self, query_string, error_obj):
-        pass
+        if error_obj.value == YtbApiErrorEnum.QUOTA_EXCEEDED.value:
+            doc_quota_exceeded = self.generate_document(self._available_keys[0], False, False, datetime.datetime.now())
+            result = self._update_key_status(doc_quota_exceeded)
+            if not result:
+                logging.error('Error when updating document to database in _retry_search')
+                return False
+            self._available_keys.pop(0)
+            if len(self._available_keys) == 0:
+                pull_result = self._pull_api_key()
+                if not pull_result:
+                    logging.error('Error when pulling new api key in _retry_search')
+                    return False
+            return self.search_query(query_string)
+        if error_obj.value == YtbApiErrorEnum.UNDEFINED_ERROR.value:
+            logging.error('Unhandled error in _retry_search')
+            return False
 
     def _update_key_status(self, docs_for_update):
         result = self.col.update_one({'key': docs_for_update['key']},
@@ -181,8 +197,21 @@ class YoutubeDataApiCaller:
 
         return doc_dict
 
+    def _release_all_key(self):
+
+        failed_released_key = []
+        for key in self._available_keys:
+            update_doc = self.generate_document(key, False, True, datetime.datetime.now())
+            update_result = self._update_key_status(update_doc)
+            if update_result:
+                failed_released_key.append(key)
+        if failed_released_key:
+            logging.error('error when releasing keys, total {} keys, the keys are {}'.format(
+                len(failed_released_key), failed_released_key))
+
+
     def __del__(self):
-        pass
+        self._release_all_key()
 
 
 def add_keys_to_db(api_keys, db_url, db_port, db_name, col_name):
