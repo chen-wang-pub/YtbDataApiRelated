@@ -6,7 +6,7 @@ import datetime
 import logging
 from enum import Enum, unique
 
-from StoreSearchResponse import storeSearchResponse
+from StoreSearchResponse import storeSearchResponse, get_all_doc_contains_query_string
 
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
@@ -108,10 +108,29 @@ class YoutubeDataApiCaller:
             return YtbApiErrorEnum.UNDEFINED_ERROR
         return False
 
-    def _parse_ytb_api_response(self, api_reply_json):
-        return 'WIP'
+    def _parse_ytb_api_response(self, api_reply_json, query_string):
+        doc_list = []
+        searched_items = api_reply_json['items']
+        for item in searched_items:
+            etag = item['etag']
+            kind = item['id']['kind']
+            if 'videoId' in item['id']:
+                item_id = item['id']['videoId']
+            elif 'channelId':
+                item_id = item['id']['channelId']
+            elif 'playlistId':
+                item_id = item['id']['playlistId']
+            record_doc = {'etag': etag, 'kind': kind, 'item_id': item_id, 'query_string': [query_string]}
+            doc_list.append(record_doc)
+        return doc_list
 
-    def search_query(self, query_string):
+    def search_query(self, query_string, check_existing=False):
+
+        if check_existing:
+            existed_list = get_all_doc_contains_query_string(query_string)
+            if existed_list:
+                return existed_list
+
         if not self.has_available_keys():
             result = self._pull_api_key()
             if not result:
@@ -135,11 +154,11 @@ class YoutubeDataApiCaller:
             if error_obj:
                 return self._retry_search(query_string, error_obj)
 
-            result = self._parse_ytb_api_response(ytb_result)
+            doc_list = self._parse_ytb_api_response(ytb_result, query_string)
             # TODO: Queue this method in a thread in background
-            storeSearchResponse(ytb_result, query_string)
+            storeSearchResponse(doc_list)
 
-            return result
+            return doc_list
 
         except requests.exceptions.RequestException:
             logging.error('error in requests module')
@@ -208,7 +227,6 @@ class YoutubeDataApiCaller:
         if failed_released_key:
             logging.error('error when releasing keys, total {} keys, the keys are {}'.format(
                 len(failed_released_key), failed_released_key))
-
 
     def __del__(self):
         self._release_all_key()
