@@ -1,16 +1,22 @@
 from pymongo import MongoClient, DESCENDING
 
-def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
+
+def storeSearchResponse(doc_list, db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
                         col_name='YtbSearchRecord'):
     """
     Expecting youtube data api response in json format as the example at the end of the file
 
     stored mongo db collection schema:
     {
-        "query_string": The query string used for querying the youtube data api
-        "etag": The item's etag that is used as the unique identifier used by youtube data api
-        "kind": The item's kind field in the resopnse body
-        "item_id": The video id or channel id of the item. It's the suffix of the youtube video
+        "query_string": ['xxx']
+            All query strings used for querying the youtube data api, it is an array of
+                    query_string historically used to get this result
+        "etag": 'xxx'
+            The item's etag that is used as the unique identifier used by youtube data api
+        "kind": 'xxx'
+            The item's kind field in the resopnse body
+        "item_id": 'xxx'
+            The video id or channel id of the item. It's the suffix of the youtube video
     }
 
     api example: https://youtube.googleapis.com/youtube/v3/search?q=xxxx&key=xxxx
@@ -27,23 +33,13 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
     collection = db[col_name]
     collection.create_index([('etag', DESCENDING)], unique=True)
 
-    searched_items = api_reply_json['items']
-    for item in searched_items:
-        etag = item['etag']
-        kind = item['id']['kind']
-        if 'videoId' in item['id']:
-            item_id = item['id']['videoId']
-        elif 'channelId':
-            item_id = item['id']['channelId']
-        elif 'playlistId':
-            item_id = item['id']['playlistId']
-
+    for doc_record in doc_list:
         # TODO: need to rewrite the following part with the $addtoset updateone upsert, and add test to it
         # TODO: Add check that the insert succeeded and return the result
         # TODO: Add error handling and add testing
+        query_string = doc_record['query_string']
 
-
-        cursor = collection.find({'etag': etag}, {'query_string': 1, '_id':0})
+        cursor = collection.find({'etag': doc_record['etag']}, {'query_string': 1, '_id': 0})
         doc = next(cursor, None)
         if doc:
             current_queries = doc['query_string']
@@ -51,8 +47,34 @@ def storeSearchResponse(api_reply_json, query_string,db_url='localhost', db_port
                 current_queries.append(query_string)
         else:
             current_queries = [query_string]
-        final_record = {'etag': etag, 'kind': kind, 'item_id': item_id, 'query_string': current_queries}
-        collection.replace_one({"etag": etag}, final_record, upsert=True)
+        final_record = {'etag': doc_record['etag'],
+                        'kind': doc_record['kind'], 'item_id': doc_record['item_id'], 'query_string': current_queries}
+        collection.replace_one({"etag": doc_record['etag']}, final_record, upsert=True)
+
+
+def get_all_doc_contains_query_string(query_string, db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
+                        col_name='YtbSearchRecord'):
+    """
+    Search in the search record collection and return all the documents that contains the query string
+
+    :param query_string:
+    :param db_url:
+    :param db_port:
+    :param db_name:
+    :param col_name:
+    :return:
+    """
+    db_client = MongoClient(db_url, db_port)
+    db = db_client[db_name]
+    collection = db[col_name]
+
+    doc_list = []
+    for document in collection.find({'query_string': [query_string]}):
+        doc = {'etag': document['etag'], 'kind': document['kind'], 'item_id': document['item_id'],
+               'query_string': [query_string]}
+        doc_list.append(doc)
+    return doc_list
+
 
 
 """
