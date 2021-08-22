@@ -1,0 +1,4 @@
+venv/
+test_*.py
+.idea/
+*.yaml
