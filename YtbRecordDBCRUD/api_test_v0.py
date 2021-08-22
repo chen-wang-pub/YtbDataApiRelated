@@ -1,5 +1,5 @@
 from flask import Flask, request, json, Response
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING, DESCENDING
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -25,9 +25,14 @@ class YtbSearchRecordDBAPI_V0:
         self.collection = db[col_name]
         self.payload = payload
     # TODO: Need error handling when query failed
-    def read(self):
-        doc_filter, doc_projection = self._get_read_parameters()
-        documents = self.collection.find(doc_filter, doc_projection)
+
+    def read(self, read_limit=10000):
+        doc_filter, doc_projection, doc_sort_list = self._get_read_parameters()
+
+        if doc_sort_list:
+            documents = self.collection.find(doc_filter, doc_projection).sort(doc_sort_list).limit(read_limit)
+        else:
+            documents = self.collection.find(doc_filter, doc_projection).limit(read_limit)
         record_list = [{field: doc[field] for field in doc} for doc in documents]
 
         return record_list
@@ -54,16 +59,29 @@ class YtbSearchRecordDBAPI_V0:
 
     def _get_read_parameters(self):
         """
-        The parameters should be checked
+
         :return:
         """
         doc_filter = {}
         doc_projection = {'_id': 0}
+        doc_sort_list = []
+        """
+        sort list example:
+        col.find().sort([
+        ('field1', pymongo.ASCENDING),
+        ('field2', pymongo.DESCENDING)])
+        please refer to https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html#pymongo.cursor.Cursor.limit
+        for more example
+        """
 
         self._transfer_load('read_filter', doc_filter)
         self._transfer_load('read_projection', doc_projection)
+        temp_dict = {}
+        self._transfer_load('read_sort', temp_dict)
+        for k, v in temp_dict:
+            doc_sort_list.append((k, v))
 
-        return doc_filter, doc_projection
+        return doc_filter, doc_projection, doc_sort_list
 
     def write(self):
         pass
