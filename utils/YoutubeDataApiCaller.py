@@ -97,7 +97,6 @@ class YoutubeDataApiCaller:
         :param api_reply_json:
         :return:
         """
-        undefined_error = 'undefined  error'
         if 'error' in api_reply_json:
             # error_code = api_reply_json['error']['code']
             error_message = api_reply_json['error']['message']
