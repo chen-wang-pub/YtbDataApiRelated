@@ -24,8 +24,17 @@ class YtbSearchRecordDBAPI_V0:
         client = MongoClient(db_url, db_port)
         db = client[db_name]
         self.collection = db[col_name]
-        self.payload = payload
+        self._payload = payload
     # TODO: Need error handling when query failed
+
+    @property
+    def payload(self):
+        return self._payload
+
+    @payload.setter
+    def payload(self, new_payload):
+        logging.debug('switching payload')
+        self._payload = new_payload
 
     def read(self, read_limit=10000):
         doc_filter, doc_projection, doc_sort_list = self._get_read_parameters()
@@ -133,4 +142,9 @@ class YtbSearchRecordDBAPI_V0:
         else:
             return False
 
+if __name__ == '__main__':
+    payload = {
 
+    }
+
+    db_obj = YtbSearchRecordDBAPI_V0(payload)
