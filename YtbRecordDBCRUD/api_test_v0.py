@@ -1,5 +1,6 @@
 from flask import Flask, request, json, Response
 from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.errors import BulkWriteError
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -84,12 +85,52 @@ class YtbSearchRecordDBAPI_V0:
         return doc_filter, doc_projection, doc_sort_list
 
     def write(self):
+
+        docs_to_write = self.payload['write_docs']  # expecting it to be a list of documents
+        try:
+            response = self.collection.insert_many(docs_to_write)
+        except BulkWriteError:
+            #  code 11000 is for duplicate key error
+            errors_to_worry = filter(lambda x: x['code'] != 11000, BulkWriteError.details['writeErrors'])
+            if len(errors_to_worry) > 0:
+                logging.error('Errors need to be handled when writing to the database')
+                return False
+        logging.debug('Total {} new document inserted into db'.format(len(response['insertedIds'])))
+        return True
+
+    def _check_update_aggregation(self, update_aggregation):
         pass
 
     def update(self):
-        pass
+        update_filter = {}
+        update_aggregation = self.payload['update_aggregation']
+        self._check_update_aggregation(update_aggregation)
+        update_options = {}
+
+        self._transfer_load('update_filter', update_filter)
+        self._transfer_load('update_options', update_options)
+
+        response = self.collection.update_many(update_filter, update_aggregation, **update_options)
+        logging.debug('Response from update operation. acknowledged: {}, matchedCount: {}, modifiedCount: {}'.format(
+            response.acknowledged, response.matched_count, response.modified_count))
+        if response.modified_count > 0:
+            return True
+        else:
+            return False
 
     def delete(self):
-        pass
+        delete_filter = {}
+        delete_option = {}
+        self._transfer_load('delete_filter', delete_filter)
+        self._transfer_load('delete_option', delete_option)
+
+        response = self.collection.delete_many(delete_filter, **delete_option)
+        logging.debug('Response from delete operation. acknowledged: {}, deletedCount: {}'.format(
+            response.acknowledged, response.deleted_count))
+
+        if response.deleted_count > 0:
+            return True
+        else:
+            return False
 
 
