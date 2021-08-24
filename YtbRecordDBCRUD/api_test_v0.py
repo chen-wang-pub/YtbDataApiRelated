@@ -56,7 +56,7 @@ class YtbSearchRecordDBAPI_V0:
         :param output_dict:
         :return:
         """
-        if self.payload[payload_key]:
+        if payload_key in self.payload:
             temp_read_filter = self.payload[payload_key]
             for k, v in temp_read_filter.items():
                 #TODO: field check can be added here
@@ -98,13 +98,16 @@ class YtbSearchRecordDBAPI_V0:
         docs_to_write = self.payload['write_docs']  # expecting it to be a list of documents
         try:
             response = self.collection.insert_many(docs_to_write)
-        except BulkWriteError:
+        except BulkWriteError as bwe:
             #  code 11000 is for duplicate key error
-            errors_to_worry = filter(lambda x: x['code'] != 11000, BulkWriteError.details['writeErrors'])
-            if len(errors_to_worry) > 0:
+            error_list = bwe.details['writeErrors']
+            errors_to_worry = filter(lambda x: x['code'] != 11000, error_list)
+            if len(list(errors_to_worry)) > 0:
                 logging.error('Errors need to be handled when writing to the database')
                 return False
-        logging.debug('Total {} new document inserted into db'.format(len(response['insertedIds'])))
+            logging.debug('Duplicated key error. Total {} new document inserted into db'.format(bwe.details['nInserted']))
+            return True
+        logging.debug('Total {} new document inserted into db'.format(len(response.inserted_ids)))
         return True
 
     def _check_update_aggregation(self, update_aggregation):
@@ -144,7 +147,40 @@ class YtbSearchRecordDBAPI_V0:
 
 if __name__ == '__main__':
     payload = {
-
+        'write_docs': [{'query_string': ['test0','test1','test4'], 'etag': 'e12340', 'kind':'video', 'item_id':'1121210'},
+                       {'query_string': ['test2'], 'etag': 'e12341', 'kind':'channel', 'item_id':'1121211'},
+                       {'query_string': ['test3'], 'etag': 'e12342', 'kind':'playlist', 'item_id':'1121212'},
+                       {'query_string': ['test4'], 'etag': 'e12343', 'kind':'video', 'item_id':'1121213'}],
+        'read_filter': {'query_string': 'test4'},
+        'read_projection': {'item_id': 1},
+        'update_filter': {'kind': {'$in': ['channel', 'playlist']}},
+        'update_aggregation': [{'$set': {'kind': 'not video'}}],
+        'delete_filter': {'etag': 'e12342'}
     }
 
+    logging.info('testing basic write')
+    clean_up = YtbSearchRecordDBAPI_V0({'delete_filter':{}})
+    clean_up.delete()
+
     db_obj = YtbSearchRecordDBAPI_V0(payload)
+    db_obj.collection.create_index([('etag', DESCENDING)], unique=True)
+    db_obj.write()
+
+    logging.info('testing write with duplicate entry')
+    db_obj.write()
+
+    logging.info('testing read')
+    logging.debug(db_obj.read())
+
+    logging.info('testing update')
+    db_obj.update()
+    db_obj.payload['read_filter'] = {}
+    db_obj.payload['read_projection'] = {}
+    logging.debug(db_obj.read())
+
+
+    logging.info('testing delete')
+    db_obj.delete()
+    db_obj.payload['read_filter'] = {}
+    db_obj.payload['read_projection'] = {}
+    logging.debug(db_obj.read())
