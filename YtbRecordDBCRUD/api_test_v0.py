@@ -1,4 +1,3 @@
-from flask import Flask, request, json, Response
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import BulkWriteError
 import logging
