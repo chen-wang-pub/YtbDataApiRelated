@@ -6,7 +6,8 @@ from YtbRecordDBCRUD import api_test_v0
 app = Flask(__name__)
 
 # TODO: Modify the db api to include detailed error msg in response instead of just a single T/F status
-
+# TODO: Need log on server side for dealing with request
+# TODO: Error handling
 
 @app.route('/')
 def homepage():
