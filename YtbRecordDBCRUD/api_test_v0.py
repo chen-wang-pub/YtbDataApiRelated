@@ -44,7 +44,7 @@ class YtbSearchRecordDBAPI_V0:
             documents = self.collection.find(doc_filter, doc_projection).limit(read_limit)
         record_list = [{field: doc[field] for field in doc} for doc in documents]
 
-        return record_list
+        return {'response':record_list}
 
     def _transfer_load(self, payload_key, output_dict):
         """
