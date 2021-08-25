@@ -2,3 +2,4 @@ venv/
 test__*.py
 .idea/
 *.yaml
+*.pyc
