@@ -50,7 +50,7 @@ if __name__ == '__main__':
     logging.debug(db_obj.read())
 
 
-    base_url = 'http://localhost:5001/ytbrecordapi/v0/{}'
+    base_url = 'http://localhost:5000/ytbrecordapi/v0/{}'
 
     logging.info('testing restapi read')
     data = {'read_filter': {}}
