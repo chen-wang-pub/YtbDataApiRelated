@@ -2,11 +2,13 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import BulkWriteError
 import logging
 
+
+
 logging.basicConfig(level=logging.DEBUG)
 
 api_search_record_db_dict = {
-    'db_url': '172.17.0.2',
-    'db_port': 27017,
+    'db_url': 'localhost',
+    'db_port': 1024,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',
 }
@@ -18,7 +20,7 @@ class YtbSearchRecordDBAPI_V0:
     that stores the cached Ytb data api search records
     """
 
-    def __init__(self, payload, db_url='172.17.0.2', db_port=27017,
+    def __init__(self, payload, db_url='localhost', db_port=1024,
                  db_name='YtbDataApiSearched', col_name='YtbSearchRecord'):
         client = MongoClient(db_url, db_port)
         db = client[db_name]
@@ -146,87 +148,58 @@ class YtbSearchRecordDBAPI_V0:
 
 from flask import json, Response, request
 from flask import Flask
-
+from flask_restx  import Api, Resource
 
 app = Flask(__name__)
+api = Api(app=app)
 
-# TODO: Modify the db api to include detailed error msg in response instead of just a single T/F status
-# TODO: Need log on server side for dealing with request
-# TODO: Error handling
+@api.route("/ytbrecordapi/v0/mongodb/")
+class MongodbRestAPI(Resource):
 
-@app.route('/')
-def homepage():
-    return Response(response=json.dumps({"Status": "homepage WIP"}),
-                    status=200,
-                    mimetype='application/json')
+    def get(self):
 
-@app.route('/ytbrecordapi/v0/readall', methods=['GET'])
-def ytb_record_db_api_read():
+        db_obj = YtbSearchRecordDBAPI_V0({})
+        return_data = db_obj.read()
 
-    db_obj = YtbSearchRecordDBAPI_V0({})
-    return_data = db_obj.read()
-
-    return Response(response=json.dumps(return_data),
-                    status=200,
-                    mimetype='application/json')
-
-
-@app.route('/ytbrecordapi/v0/read', methods=['POST'])
-def ytb_record_db_api_read():
-    data = request.json
-    if not data:
-        return Response(response=json.dumps({"Error": "Please provide connection information"}),
-                        status=400,
+        return Response(response=json.dumps(return_data),
+                        status=200,
                         mimetype='application/json')
-    db_obj = YtbSearchRecordDBAPI_V0(data)
-    return_data = db_obj.read()
 
-    return Response(response=json.dumps(return_data),
-                    status=200,
-                    mimetype='application/json')
-
-
-@app.route('/ytbrecordapi/v0/write', methods=['POST'])
-def ytb_record_db_api_write():
-    data = request.json
-    if not data:
-        return Response(response=json.dumps({"Error": "Please provide connection information"}),
-                        status=400,
+    def post(self):
+        data = request.json
+        if not data:
+            return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                            status=400,
+                            mimetype='application/json')
+        db_obj = YtbSearchRecordDBAPI_V0(data)
+        write_status = db_obj.write()
+        return Response(response=json.dumps({'write_status': write_status}),
+                        status=200,
                         mimetype='application/json')
-    db_obj = YtbSearchRecordDBAPI_V0(data)
-    write_status = db_obj.write()
-    return Response(response=json.dumps({'write_status': write_status}),
-                    status=200,
-                    mimetype='application/json')
 
-
-@app.route('/ytbrecordapi/v0/update', methods=['PUT'])
-def ytb_record_db_api_update():
-    data = request.json
-    if not data:
-        return Response(response=json.dumps({"Error": "Please provide connection information"}),
-                        status=400,
+    def put(self):
+        data = request.json
+        if not data:
+            return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                            status=400,
+                            mimetype='application/json')
+        db_obj = YtbSearchRecordDBAPI_V0(data)
+        update_status = db_obj.update()
+        return Response(response=json.dumps({'update_status': update_status}),
+                        status=200,
                         mimetype='application/json')
-    db_obj = YtbSearchRecordDBAPI_V0(data)
-    update_status = db_obj.update()
-    return Response(response=json.dumps({'update_status': update_status}),
-                    status=200,
-                    mimetype='application/json')
 
-
-@app.route('/ytbrecordapi/v0/delete', methods=['DELETE'])
-def ytb_record_db_api_delete():
-    data = request.json
-    if not data:
-        return Response(response=json.dumps({"Error": "Please provide connection information"}),
-                        status=400,
+    def delete(self):
+        data = request.json
+        if not data:
+            return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                            status=400,
+                            mimetype='application/json')
+        db_obj = YtbSearchRecordDBAPI_V0(data)
+        delete_status = db_obj.delete()
+        return Response(response=json.dumps({'delete_status': delete_status}),
+                        status=200,
                         mimetype='application/json')
-    db_obj = YtbSearchRecordDBAPI_V0(data)
-    delete_status = db_obj.delete()
-    return Response(response=json.dumps({'delete_status': delete_status}),
-                    status=200,
-                    mimetype='application/json')
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

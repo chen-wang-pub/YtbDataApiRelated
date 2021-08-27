@@ -16,7 +16,18 @@ def homepage():
                     mimetype='application/json')
 
 
-@app.route('/ytbrecordapi/v0/read', methods=['GET'])
+@app.route('/ytbrecordapi/v0/readall', methods=['GET'])
+def ytb_record_db_api_read():
+
+    db_obj = api_test_v0.YtbSearchRecordDBAPI_V0({})
+    return_data = db_obj.read()
+
+    return Response(response=json.dumps(return_data),
+                    status=200,
+                    mimetype='application/json')
+
+
+@app.route('/ytbrecordapi/v0/read', methods=['POST'])
 def ytb_record_db_api_read():
     data = request.json
     if not data:
