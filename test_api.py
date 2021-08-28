@@ -50,12 +50,15 @@ if __name__ == '__main__':
     logging.debug(db_obj.read())
 
 
-    base_url = 'http://localhost:5000/ytbrecordapi/v0/{}'
+    base_url = 'http://localhost:5001/ytbrecordapi/v0/{}'
+    logging.info('testing restapi readall')
+    response = requests.get(url=base_url.format('readall'), headers={'content-type': 'application/json'})
+    logging.debug(response.content)
 
     logging.info('testing restapi read')
     data = {'read_filter': {}}
 
-    response = requests.get(url=base_url.format('read'), data=json.dumps(data), headers={'content-type': 'application/json'})
+    response = requests.post(url=base_url.format('read'), data=json.dumps(data), headers={'content-type': 'application/json'})
     logging.debug(response.content)
 
     logging.info('testing restapi delete')
