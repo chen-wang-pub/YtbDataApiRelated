@@ -66,7 +66,7 @@ class YoutubeDataApiCaller:
         self.db = self.db_client[db_name]
         self.col = self.db[col_name]
         self._max_key = number_of_keys
-        self._pull_api_key()
+        #self._pull_api_key()
 
     @property
     def max_key(self):
@@ -130,7 +130,7 @@ class YoutubeDataApiCaller:
             if existed_list:
                 return existed_list
 
-        if not self.has_available_keys():
+        if not self.has_available_keys:
             result = self._pull_api_key()
             if not result:
                 logging.error('error when pulling api keys while executing search_query')
@@ -162,10 +162,15 @@ class YoutubeDataApiCaller:
         except requests.exceptions.RequestException:
             logging.error('error in requests module')
             return False
+        finally:
+            self._release_all_key()
 
     def _pull_api_key(self):
-        temp_keys = self.col.find({'in_use': False, 'quota_exceeded': False, }, limit=self.max_key)
-        if temp_keys == 0:
+        documents = self.col.find({'in_use': False, 'quota_exceeded': False, }, limit=self.max_key)
+        temp_keys = [a_doc['key'] for a_doc in documents]
+        logging.debug('temp keys:{}'.format(temp_keys))
+        logging.debug(list(documents))
+        if not temp_keys:
             return False
         else:
             self._available_keys = temp_keys
@@ -176,7 +181,7 @@ class YoutubeDataApiCaller:
 
     def _retry_search(self, query_string, error_obj):
         if error_obj.value == YtbApiErrorEnum.QUOTA_EXCEEDED.value:
-            doc_quota_exceeded = self.generate_document(self._available_keys[0], False, False, datetime.datetime.now())
+            doc_quota_exceeded = self.generate_document(self._available_keys[0], False, True, datetime.datetime.now())
             result = self._update_key_status(doc_quota_exceeded)
             if not result:
                 logging.error('Error when updating document to database in _retry_search')
@@ -193,6 +198,7 @@ class YoutubeDataApiCaller:
             return False
 
     def _update_key_status(self, docs_for_update):
+        logging.debug(docs_for_update)
         result = self.col.update_one({'key': docs_for_update['key']},
                {"$set": {'in_use': docs_for_update['in_use'], 'quota_exceeded': docs_for_update['quota_exceeded'],
                          'last_update_date': docs_for_update['last_update_date']}}
@@ -219,7 +225,7 @@ class YoutubeDataApiCaller:
 
         failed_released_key = []
         for key in self._available_keys:
-            update_doc = self.generate_document(key, False, True, datetime.datetime.now())
+            update_doc = self.generate_document(key, False, False, datetime.datetime.now())
             update_result = self._update_key_status(update_doc)
             if update_result:
                 failed_released_key.append(key)
@@ -227,8 +233,8 @@ class YoutubeDataApiCaller:
             logging.error('error when releasing keys, total {} keys, the keys are {}'.format(
                 len(failed_released_key), failed_released_key))
 
-    def __del__(self):
-        self._release_all_key()
+    """def __del__(self):
+        self._release_all_key()"""
 
 
 def add_keys_to_db(api_keys, db_url, db_port, db_name, col_name):
@@ -268,9 +274,6 @@ def update_db_keys_status(key_to_update, db_url, db_port, db_name, col_name):
 
 
 if __name__ == '__main__':
-    test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 1024, 'KeyPool', 'YoutubeDataApi')
-    a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
-    logging.debug(a)
     import yaml
 
     with open('api_keys.yaml', 'r') as f:
@@ -282,3 +285,13 @@ if __name__ == '__main__':
     failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 1024, 'KeyPool', 'YoutubeDataApi')
     if failed_keys:
         logging.debug(failed_keys)
+
+    test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 1024, 'KeyPool', 'YoutubeDataApi')
+    a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
+    logging.debug(a)
+
+    respond = test.search_query('test4', check_existing=True)
+    logging.debug(respond)
+
+    respond = test.search_query('Whats Going On Astro Nito Onna', check_existing=True)
+    logging.debug(respond)

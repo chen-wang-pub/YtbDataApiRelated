@@ -5,7 +5,7 @@ from .mongodbapi import YtbSearchRecordDBAPI_V0
 mongodbrestapi = Blueprint('mongodbrestapi', __name__)
 
 
-
+# TODO: modify the route to /ytbrecordapi/v0/{db_url}/{db_col}/readall|read|write|update|delete
 
 
 @mongodbrestapi.route('/ytbrecordapi/v0/readall', methods=['GET'])
