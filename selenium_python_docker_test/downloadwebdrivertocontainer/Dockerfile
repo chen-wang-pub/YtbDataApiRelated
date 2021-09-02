@@ -1,36 +1,41 @@
-FROM ubuntu:bionic
+  
+FROM debian:stable 
 
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip \
-    fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 \
-    libnspr4 libnss3 lsb-release xdg-utils libxss1 libdbus-glib-1-2 \
-    curl unzip wget \
-    xvfb
-
-
-# install geckodriver and firefox
-
-RUN GECKODRIVER_VERSION=`curl https://github.com/mozilla/geckodriver/releases/latest | grep -Po 'v[0-9]+.[0-9]+.[0-9]+'` && \
-    wget https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz && \
-    tar -zxf geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz -C /usr/local/bin && \
-    chmod +x /usr/local/bin/geckodriver && \
-    rm geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz
-
-RUN FIREFOX_SETUP=firefox-setup.tar.bz2 && \
-    apt-get purge firefox && \
-    wget -O $FIREFOX_SETUP "https://download.mozilla.org/?product=firefox-latest&os=linux64" && \
-    tar xjf $FIREFOX_SETUP -C /opt/ && \
-    ln -s /opt/firefox/firefox /usr/bin/firefox && \
-    rm $FIREFOX_SETUP
+## For chromedriver installation: curl/wget/libgconf/unzip
+RUN apt-get update -y && apt-get install -y wget curl unzip libgconf-2-4
+## For project usage: python3/python3-pip/chromium/xvfb
+RUN apt-get update -y && apt-get install -y chromium xvfb python3 python3-pip 
 
 
-COPY . /app
-WORKDIR /app
+# Download, unzip, and install chromedriver
+RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/90.0.4430.24/chromedriver_linux64.zip
+RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV PYTHONUNBUFFERED=1
 
-RUN pip3 install -r requirements.txt
+# Create directory for project name (ensure it does not conflict with default debian /opt/ directories).
+RUN mkdir -p /opt/app
+WORKDIR /opt/app
 
-CMD ["python3", "./app.py"]
+
+## Your python project dependencies
+RUN pip3 install selenium
+## or install from dependencies.txt, comment above and uncomment below
+#COPY requirements.txt .
+#RUN pip3 install -r requirements.txt
+
+
+## Copy over project/script (feel free to combine these if your project is a combination of both directories and top-level files)
+### For projects which are modules
+#COPY app/ .
+## For projects which are single scripts
+COPY app.py .
+
+
+# Set display port and dbus env to avoid hanging
+ENV DISPLAY=:99
+ENV DBUS_SESSION_BUS_ADDRESS=/dev/null
+
+
+# Bash script to invoke xvfb, any preliminary commands, then invoke project
+COPY run.sh .
+CMD /bin/bash run.sh
