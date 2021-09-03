@@ -10,3 +10,4 @@ objective_queue = [
     'Learn python message queue',
     'Refactor part of or the whole project using message queue',
 ]
+
