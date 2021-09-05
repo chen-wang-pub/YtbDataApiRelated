@@ -15,12 +15,12 @@ logger.addHandler(ch)
 db_url = '172.17.0.2'
 db_port = 27017
 database_name = 'proxy'
-collectoin_name = 'sslproxies'
+collection_name = 'sslproxies'
 command_executor = 'http://localhost:4445/wd/hub'
 source_url = "https://sslproxies.org/"
-restapi_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_url,db_port,database_name,collectoin_name)
-read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_url,db_port,database_name,collectoin_name)
-delete_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/delete'.format(db_url,db_port,database_name,collectoin_name)
+write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_url,db_port,database_name,collection_name)
+read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_url,db_port,database_name,collection_name)
+delete_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/delete'.format(db_url,db_port,database_name,collection_name)
 def generate_proxy_document(ip, port, country_code, country, anonymity, google, https, last_checked):
     return {'ip':ip, 'port':port, 'country_code': country_code, 'country': country, 'anonymity': anonymity, 'google': google, 'https': https, 'last_checked': last_checked}
 
@@ -84,10 +84,10 @@ for doc in proxy_docs:
     if len(doc_list) < 1:
         # logger.debug('found doc')
         payload = {'write_docs': [doc]}
-        response = requests.post(url=restapi_url, data=json.dumps(payload),
+        response = requests.post(url=write_url, data=json.dumps(payload),
                                  headers={'content-type': 'application/json'})
         logger.debug(response.content)
 """payload = {'write_docs': proxy_docs}
-response = requests.post(url=restapi_url, data=json.dumps(payload),
+response = requests.post(url=write_url, data=json.dumps(payload),
                          headers={'content-type': 'application/json'})
 logger.debug(response.content)"""
