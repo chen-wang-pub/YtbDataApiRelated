@@ -3,7 +3,7 @@ import os
 import time
 from flask import Blueprint, Response, request, json, redirect, current_app
 
-from .utils.check_existence_before_upload import upload_if_not_exist
+from utils.check_existence_before_upload import upload_if_not_exist
 
 db_info_dict = {
     'db_url': '172.17.0.4',
@@ -20,7 +20,6 @@ write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
 temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
-current_app.logger.debug('all temp files will be stored in {}'.format(temp_dir_loc))
 queue_request = Blueprint('queue_request', __name__)
 
 """
@@ -49,7 +48,7 @@ def retrieve_video_id(url):
 def generate_doc(item_id):
     return {'item_id': item_id, 'status':'queued', 'total_sec': time.time(), 'queued_timezone': 'PDT'}
 
-@queue_request.route('ytbaudiodownload/v0/howto')
+@queue_request.route('/ytbaudiodownload/v0/howto')
 def user_guide_page():
     html_str = """<head>To download the audio from a youtube video, please use one of the following 2 methods:</head>
 <div class="method">
@@ -63,8 +62,13 @@ def user_guide_page():
     return html_str
 
 
+@queue_request.route('/')
+def default_page():
+    return redirect('ytbaudiodownload/v0/howto')
+
+
 @queue_request.route('/ytbaudiodownload/v0/queuebyvideoid', methods=['GET'])
-def handling_download_request():
+def handling_get_download_request():
     video_id = request.args.get('id', default='', type=str)
     if not video_id:
         return redirect('ytbaudiodownload/v0/howto')
@@ -73,20 +77,29 @@ def handling_download_request():
         new_temp_dir = r'{}/{}'.format(temp_dir_loc, video_id)
         try:
             os.makedirs(new_temp_dir)
-        except OSError:
-            current_app.logger.error('Error when making temp directory for {}'.format(video_id))
-            return Response(response=json.dumps({"Error": "Error when queuing the task"}),
-                            status=400,
-                            mimetype='application/json')
+        except OSError as err:
+            if err.errno == 17:
+                return Response(response=json.dumps({"Succeeded": "Download for {} is already queued. "
+                                                                  "Please use "
+                                                                  "/ytbaudiodownload/v0/downloadbyvideoid/{} "
+                                                                  "for checking status and "
+                                                                  "retrieving the file".format(video_id, video_id)}),
+                                status=200,
+                                mimetype='application/json')
+            else:
+                current_app.logger.error('Error when making temp directory for {}'.format(video_id))
+                return Response(response=json.dumps({"Error": "Error when queuing the task"}),
+                                status=400,
+                                mimetype='application/json')
         doc = generate_doc(video_id)
         read_playload = {'read_filter': {'item_id': video_id}}
         try:
             upload_if_not_exist(doc, read_playload, read_url, write_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
-                                                              "/ytbaudiodownload/v0/downloadbyvideoid/(videoid) "
+                                                              "/ytbaudiodownload/v0/downloadbyvideoid/{} "
                                                               "for checking status and "
-                                                              "retrieving the file".format(video_id)}),
+                                                              "retrieving the file".format(video_id, video_id)}),
                             status=200,
                             mimetype='application/json')
         except:
@@ -100,7 +113,7 @@ def handling_download_request():
 
 
 @queue_request.route('/ytbaudiodownload/v0/queuebyurl', methods=['POST'])
-def handling_download_request():
+def handling_post_download_request():
     data = request.json
     if 'url' not in data:
         return redirect('ytbaudiodownload/v0/howto')
@@ -109,20 +122,29 @@ def handling_download_request():
         new_temp_dir = r'{}/{}'.format(temp_dir_loc, video_id)
         try:
             os.makedirs(new_temp_dir)
-        except OSError:
-            current_app.logger.error('Error when making temp directory for {}'.format(video_id))
-            return Response(response=json.dumps({"Error": "Error when queuing the task"}),
-                            status=400,
-                            mimetype='application/json')
+        except OSError as err:
+            if err.errno == 17:
+                return Response(response=json.dumps({"Succeeded": "Download for {} is already queued. "
+                                                                  "Please use "
+                                                                  "/ytbaudiodownload/v0/downloadbyvideoid/{} "
+                                                                  "for checking status and "
+                                                                  "retrieving the file".format(video_id, video_id)}),
+                                status=200,
+                                mimetype='application/json')
+            else:
+                current_app.logger.error('Error when making temp directory for {}'.format(video_id))
+                return Response(response=json.dumps({"Error": "Error when queuing the task"}),
+                                status=400,
+                                mimetype='application/json')
         doc = generate_doc(video_id)
         read_playload = {'read_filter': {'item_id': video_id}}
         try:
             upload_if_not_exist(doc, read_playload, read_url, write_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
-                                                              "/ytbaudiodownload/v0/downloadbyvideoid/(videoid) "
+                                                              "/ytbaudiodownload/v0/downloadbyvideoid/{} "
                                                               "for checking status and "
-                                                              "retrieving the file".format(video_id)}),
+                                                              "retrieving the file".format(video_id, video_id)}),
                             status=200,
                             mimetype='application/json')
         except:
