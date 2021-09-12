@@ -1,4 +1,3 @@
-import requests
 import os
 import time
 from flask import Blueprint, Response, request, json, redirect, current_app
@@ -50,7 +49,7 @@ def generate_doc(item_id):
 
 @queue_request.route('/ytbaudiodownload/v0/howto')
 def user_guide_page():
-    html_str = """<head>To download the audio from a youtube video, please use one of the following 2 methods:</head>
+    html_str = """<head>To queue a download task for the audio part of a youtube video, please use one of the following 2 methods:</head>
 <div class="method">
    <p>Use GET method on url /ytbaudiodownload/v0/queuebyvideoid with argument ?id=ytbvideoid</p>
    <p>The youtbue video's id is the part after the '=' sign</p>
