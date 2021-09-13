@@ -63,6 +63,8 @@ def user_guide_page():
 
 @queue_request.route('/')
 def default_page():
+    #current_app.logger.debug('logging test from default page')
+    #current_app.logger.info('logging test from default page')
     return redirect('ytbaudiodownload/v0/howto')
 
 

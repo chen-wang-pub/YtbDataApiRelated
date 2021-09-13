@@ -55,5 +55,5 @@ def retrieve_video_id():
         elif 'item_id' in data:
             video_id = data['item_id']
     if not video_id:
-        return redirect('baudiodownload/v0/retrieveguide')
+        return redirect('/ytbaudiodownload/v0/retrieveguide')
 
