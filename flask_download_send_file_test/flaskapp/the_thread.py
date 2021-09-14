@@ -63,6 +63,7 @@ if __name__ == '__main__':
         'db_name': 'ytb_temp_file',
         'col_name': 'id_timestamp_status'
     }
+    temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
     read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_info_dict['db_url'],
                                                                                db_info_dict['db_port'],
                                                                                db_info_dict['db_name'],
@@ -71,10 +72,43 @@ if __name__ == '__main__':
                                                                                db_info_dict['db_port'],
                                                                                db_info_dict['db_name'],
                                                                                db_info_dict['col_name'])
+    update_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
+                                                                               db_info_dict['db_port'],
+                                                                               db_info_dict['db_name'],
+                                                                               db_info_dict['col_name'])
     read_playload = {'read_filter': {'status': 'queued'}}
     response = requests.post(url=read_url, data=json.dumps(read_playload),
                              headers={'content-type': 'application/json'})
     doc_list = response.json()['response']
     for doc in doc_list:
-        print(doc['item_id'])
-        print(doc['total_sec'])
+        # check if it's expired
+        current_sec = time.time()
+        if (current_sec - int(doc['total_sec'])) > 600:
+            data = {'delete_filter': {'item_id': doc['item_id']}}
+
+            response = requests.delete(url=delete_url, data=json.dumps(data),
+                                       headers={'content-type': 'application/json'})
+            response_dict = json.loads(response.content)
+            print('delete status is {}'.format(response_dict['delete_status']))
+            continue
+
+        new_temp_dir = r'{}/{}'.format(temp_dir_loc, doc['item_id'])
+        try:
+            os.makedirs(new_temp_dir)
+
+        except OSError as err:
+            if err.errno == 17:
+                print('directory {} already created'.format(new_temp_dir))
+            else:
+                print('something wrong when creating directory {}'.format(new_temp_dir))
+
+        if os.path.isdir(new_temp_dir):
+            # INSERT STARTING DOWNLOADING THREAD HERE
+
+            data = {'update_filter': {'item_id': doc['item_id']},
+                    'update_aggregation': [{'$set': {'status': 'downloading'}}]}
+            response = requests.put(url=update_url, data=json.dumps(data),
+                                    headers={'content-type': 'application/json'})
+            response_dict = json.loads(response.content)
+            print('update status is {}'.format(response_dict['update_status']))
+            continue
