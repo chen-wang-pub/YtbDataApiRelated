@@ -8,7 +8,7 @@ import logging
 
 from pytube import YouTube
 
-
+# TODO: When the item id is invalid. The download thread will hang for some unknown reason, add check and use NnHrMMuRmo for further investigation
 class TheThread(threading.Thread):
     """
     record status in db: queued, downloading, ready,
