@@ -47,17 +47,15 @@ class TheThread(threading.Thread):
 
     def run(self):
         while True:
-            time.sleep(20)
-
             read_playload = {'read_filter': {'status': 'queued'}}
             response = requests.post(url=self.read_url, data=json.dumps(read_playload),
                                      headers={'content-type': 'application/json'})
             doc_list = response.json()['response']
-            current_app.debug('{} new download waiting to be started'.format(len(doc_list)))
+            #current_app.debug('{} new download waiting to be started'.format(len(doc_list)))
             for doc in doc_list:
                 # check if it's expired
                 current_sec = time.time()
-                if (current_sec - int(doc['total_sec'])) > 600:
+                if (current_sec - int(doc['queued_time'])) > 600:
                     data = {'delete_filter': {'item_id': doc['item_id']}}
 
                     response = requests.delete(url=self.delete_url, data=json.dumps(data),
@@ -78,7 +76,7 @@ class TheThread(threading.Thread):
 
                 if os.path.isdir(new_temp_dir):
                     # INSERT STARTING DOWNLOADING THREAD HERE
-                    PytubeThread(doc['item_id'], self.timeout, new_temp_dir).start()
+                    #PytubeThread(doc['item_id'], self.timeout, new_temp_dir).start()
 
                     data = {'update_filter': {'item_id': doc['item_id']},
                             'update_aggregation': [{'$set': {'status': 'downloading'}}]}
@@ -88,6 +86,7 @@ class TheThread(threading.Thread):
                     print('update status is {}'.format(response_dict['update_status']))
                     continue
 
+            time.sleep(10)
 
 class PytubeThread(threading.Thread):
     ytb_base_url = 'https://www.youtube.com/watch?v='
@@ -103,13 +102,15 @@ class PytubeThread(threading.Thread):
 
 
 if __name__ == '__main__':
+    main_thread = TheThread()
+    main_thread.start()
     itemid_l = 'LHhLcvmQbx8'
     itemid_s = 'Gu3IOnDQzko'
     base_url = 'https://www.youtube.com/watch?v='
     timeout = 10
 
     temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
-    folder_name = 'yerw'
+    folder_name = 'yeer'
 
     dirlocation = os.path.join(temp_dir_loc, folder_name)
 
@@ -135,11 +136,39 @@ if __name__ == '__main__':
         :param file_handle:
         :return:
         """
-        print(stream)
-        print(file_handle)
-        print('completed')
+        db_info_dict = {
+            'db_url': '172.17.0.4',
+            'db_port': '27017',
+            'db_name': 'ytb_temp_file',
+            'col_name': 'id_timestamp_status'
+        }
+        temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
+        read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_info_dict['db_url'],
+                                                                                   db_info_dict['db_port'],
+                                                                                   db_info_dict['db_name'],
+                                                                                   db_info_dict['col_name'])
+        delete_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/delete'.format(db_info_dict['db_url'],
+                                                                                       db_info_dict['db_port'],
+                                                                                       db_info_dict['db_name'],
+                                                                                       db_info_dict['col_name'])
+        update_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
+                                                                                       db_info_dict['db_port'],
+                                                                                       db_info_dict['db_name'],
+                                                                                       db_info_dict['col_name'])
+        item_id = 'yeer'
+
+        data = {'update_filter': {'item_id': item_id},
+                'update_aggregation': [{'$set': {'status': 'ready', 'ready_time': time.time()}}]}
+        response = requests.put(url=update_url, data=json.dumps(data),
+                                headers={'content-type': 'application/json'})
+        response_dict = json.loads(response.content)
+        print('update status is {}'.format(response_dict['update_status']))
+
+        #print(stream)
+        #print(file_handle)
+        #print('completed')
     def download_best_audio(url, output_path, filename):
-        yt = YouTube(url, on_progress_callback=on_progress, on_complete_callback=on_complete)
+        yt = YouTube(url, on_complete_callback=on_complete)
         print('about to download {} from url: {}'.format(yt.title, url))
         all_stream = yt.streams.filter(only_audio=True)
         #print(all_stream)

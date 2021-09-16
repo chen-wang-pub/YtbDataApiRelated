@@ -45,7 +45,8 @@ def retrieve_video_id(url):
     return video_id
 
 def generate_doc(item_id):
-    return {'item_id': item_id, 'status':'queued', 'total_sec': time.time(), 'queued_timezone': 'PDT'}
+    return {'item_id': item_id, 'status':'queued', 'queued_time': time.time(), 'ready_time': 0,
+            'queued_timezone': 'PDT'}
 
 @queue_request.route('/ytbaudiodownload/v0/howto')
 def user_guide_page():
@@ -75,7 +76,7 @@ def handling_get_download_request():
         return redirect('ytbaudiodownload/v0/howto')
 
     if verify_video_id(video_id):
-        new_temp_dir = r'{}/{}'.format(temp_dir_loc, video_id)
+        """new_temp_dir = r'{}/{}'.format(temp_dir_loc, video_id)
         try:
             os.makedirs(new_temp_dir)
         except OSError as err:
@@ -91,7 +92,7 @@ def handling_get_download_request():
                 current_app.logger.error('Error when making temp directory for {}'.format(video_id))
                 return Response(response=json.dumps({"Error": "Error when queuing the task"}),
                                 status=400,
-                                mimetype='application/json')
+                                mimetype='application/json')"""
         doc = generate_doc(video_id)
         read_playload = {'read_filter': {'item_id': video_id}}
         try:
