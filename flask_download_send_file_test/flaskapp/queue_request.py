@@ -45,7 +45,7 @@ def retrieve_video_id(url):
     return video_id
 
 def generate_doc(item_id):
-    return {'item_id': item_id, 'status':'queued', 'queued_time': time.time(), 'ready_time': 0,
+    return {'item_id': item_id, 'title': '', 'status': 'queued', 'queued_time': time.time(), 'ready_time': 0,
             'queued_timezone': 'PDT'}
 
 @queue_request.route('/ytbaudiodownload/v0/howto')

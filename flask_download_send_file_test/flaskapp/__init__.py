@@ -1,6 +1,7 @@
 from flask import Flask
 
 from queue_request import queue_request
+from the_thread import TheThread
 import sys
 def create_app(test_config=None):
     # create and configure the
@@ -9,6 +10,8 @@ def create_app(test_config=None):
 
 
     app.register_blueprint(queue_request)
+    main_thread = TheThread()
+    main_thread.start()
     #app.register_blueprint(send_file)
 
     return app
