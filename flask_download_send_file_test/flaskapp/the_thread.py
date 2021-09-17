@@ -4,10 +4,11 @@ import time
 import json
 import requests
 import logging
-
+import traceback
 
 from pytube import YouTube
 
+logger = logging.getLogger('the_thread')
 # TODO: When the item id is invalid. The download thread will hang for some unknown reason, add check and use NnHrMMuRmo for further investigation
 class TheThread(threading.Thread):
     """
@@ -48,12 +49,13 @@ class TheThread(threading.Thread):
         """
 
     def run(self):
+        logger.debug('the main thread is running!!!!')
         while True:
             read_playload = {'read_filter': {'status': 'queued'}}
             response = requests.post(url=self.read_url, data=json.dumps(read_playload),
                                      headers={'content-type': 'application/json'})
             doc_list = response.json()['response']
-            #logging.debug('{} new download waiting to be started'.format(len(doc_list)))
+            #logger.debug('{} new download waiting to be started'.format(len(doc_list)))
             for doc in doc_list:
                 # check if it's expired
                 current_sec = time.time()
@@ -63,7 +65,7 @@ class TheThread(threading.Thread):
                     response = requests.delete(url=self.delete_url, data=json.dumps(data),
                                                headers={'content-type': 'application/json'})
                     response_dict = json.loads(response.content)
-                    logging.debug('delete status is {}'.format(response_dict['delete_status']))
+                    logger.debug('delete status is {}'.format(response_dict['delete_status']))
                     continue
 
                 new_temp_dir = r'{}/{}'.format(self.temp_dir_loc, doc['item_id'])
@@ -72,9 +74,9 @@ class TheThread(threading.Thread):
 
                 except OSError as err:
                     if err.errno == 17:
-                        logging.debug('directory {} already created'.format(new_temp_dir))
+                        logger.debug('directory {} already created'.format(new_temp_dir))
                     else:
-                        logging.debug('something wrong when creating directory {}'.format(new_temp_dir))
+                        logger.debug('something wrong when creating directory {}'.format(new_temp_dir))
 
                 if os.path.isdir(new_temp_dir):
                     # INSERT STARTING DOWNLOADING THREAD HERE
@@ -85,7 +87,7 @@ class TheThread(threading.Thread):
                     response = requests.put(url=self.update_url, data=json.dumps(data),
                                             headers={'content-type': 'application/json'})
                     response_dict = json.loads(response.content)
-                    logging.debug('update status is {}'.format(response_dict['update_status']))
+                    logger.debug('update status is {}'.format(response_dict['update_status']))
                     continue
 
             time.sleep(10)
@@ -115,14 +117,14 @@ class PytubeThread(threading.Thread):
         response = requests.put(url=self.update_url, data=json.dumps(data),
                                 headers={'content-type': 'application/json'})
         response_dict = json.loads(response.content)
-        #logging.debug('update status is {}'.format(response_dict['update_status']))
-        logging.debug('update status is {}'.format(response_dict['update_status']))
+        #logger.debug('update status is {}'.format(response_dict['update_status']))
+        logger.debug('update status is {}'.format(response_dict['update_status']))
 
 
     def download_best_audio(self):
         yt = YouTube(self.download_url, on_complete_callback=self.on_complete)
         self.title = yt.title
-        #logging.debug('about to download {} from url: {}'.format(yt.title, self.download_url))
+        #logger.debug('about to download {} from url: {}'.format(yt.title, self.download_url))
         all_stream = yt.streams.filter(only_audio=True)
         best_quality = all_stream[-1]  # last in list
         stream = yt.streams.get_by_itag(best_quality.itag)
@@ -130,25 +132,27 @@ class PytubeThread(threading.Thread):
 
 
     def run(self):
-        logging.debug('Starting the download of {}'.format(self.item_id))
+        logger.debug('Starting the download of {}'.format(self.item_id))
         try:
             self.download_best_audio()
-            logging.debug(('Download of {} is finished.'.format(self.item_id)))
+            logger.debug(('Download of {} is finished.'.format(self.item_id)))
         except:
+            logger.debug(traceback.format_exc())
+
             data = {'update_filter': {'item_id': self.item_id},
                     'update_aggregation': [
                         {'$set': {'status': 'error'}}]}
             response = requests.put(url=self.update_url, data=json.dumps(data),
                                     headers={'content-type': 'application/json'})
             response_dict = json.loads(response.content)
-            # logging.debug('update status is {}'.format(response_dict['update_status']))
-            logging.debug('update status is {}'.format(response_dict['update_status']))
-            logging.debug('Error when downloading {}'.format(self.item_id))
+            # logger.debug('update status is {}'.format(response_dict['update_status']))
+            logger.debug('update status is {}'.format(response_dict['update_status']))
+            logger.debug('Error when downloading {}'.format(self.item_id))
 
 
-if __name__ == '__main__':
-    main_thread = TheThread()
-    main_thread.start()
+#if __name__ == '__main__':
+    #main_thread = TheThread()
+    #main_thread.start()
 
     """itemid_l = 'LHhLcvmQbx8'
     itemid_s = 'Gu3IOnDQzko'
@@ -191,22 +195,22 @@ if __name__ == '__main__':
         response = requests.put(url=update_url, data=json.dumps(data),
                                 headers={'content-type': 'application/json'})
         response_dict = json.loads(response.content)
-        logging.debug('update status is {}'.format(response_dict['update_status']))
+        logger.debug('update status is {}'.format(response_dict['update_status']))
 
-        #logging.debug(stream)
-        #logging.debug(file_handle)
-        #logging.debug('completed')
+        #logger.debug(stream)
+        #logger.debug(file_handle)
+        #logger.debug('completed')
     def download_best_audio(url, output_path, filename):
         yt = YouTube(url, on_complete_callback=on_complete)
-        logging.debug('about to download {} from url: {}'.format(yt.title, url))
+        logger.debug('about to download {} from url: {}'.format(yt.title, url))
         all_stream = yt.streams.filter(only_audio=True)
-        #logging.debug(all_stream)
+        #logger.debug(all_stream)
         best_quality = all_stream[-1]  # last in list
-        #logging.debug(best_quality)
+        #logger.debug(best_quality)
         stream = yt.streams.get_by_itag(best_quality.itag)
         return stream.download(output_path=output_path, filename=filename)
 
-    logging.debug(download_best_audio(download_url, dirlocation, itemid_s)"""
+    logger.debug(download_best_audio(download_url, dirlocation, itemid_s)"""
 
     """db_info_dict = {
         'db_url': '172.17.0.4',
@@ -242,7 +246,7 @@ if __name__ == '__main__':
             response = requests.delete(url=delete_url, data=json.dumps(data),
                                        headers={'content-type': 'application/json'})
             response_dict = json.loads(response.content)
-            logging.debug('delete status is {}'.format(response_dict['delete_status']))
+            logger.debug('delete status is {}'.format(response_dict['delete_status']))
             continue
 
         new_temp_dir = r'{}/{}'.format(temp_dir_loc, doc['item_id'])
@@ -251,9 +255,9 @@ if __name__ == '__main__':
 
         except OSError as err:
             if err.errno == 17:
-                logging.debug('directory {} already created'.format(new_temp_dir))
+                logger.debug('directory {} already created'.format(new_temp_dir))
             else:
-                logging.debug('something wrong when creating directory {}'.format(new_temp_dir))
+                logger.debug('something wrong when creating directory {}'.format(new_temp_dir))
 
         if os.path.isdir(new_temp_dir):
             # INSERT STARTING DOWNLOADING THREAD HERE
@@ -264,5 +268,5 @@ if __name__ == '__main__':
             response = requests.put(url=update_url, data=json.dumps(data),
                                     headers={'content-type': 'application/json'})
             response_dict = json.loads(response.content)
-            logging.debug('update status is {}'.format(response_dict['update_status']))
+            logger.debug('update status is {}'.format(response_dict['update_status']))
             continue"""
