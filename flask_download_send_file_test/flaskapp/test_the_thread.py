@@ -37,12 +37,11 @@ class TheThread(threading.Thread):
                                                                                      db_info_dict['col_name'])
         self.temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
         self.thread_name = 'main_thread'
-        self.timeout = 600
 
 
     def create_folder_start_download(self, item_id):
         """
-        Check if dir exist, if not, create it, and start the download thread with timeout,
+        Check if dir exist, if not, create it, and start the download thread
         item_id, use item_id as thread name, dir location
         :param item_id:
         :return:
@@ -51,8 +50,8 @@ class TheThread(threading.Thread):
     def run(self):
         logger.debug('the main thread is running!!!!')
         while True:
-            read_playload = {'read_filter': {'status': 'queued'}}
-            response = requests.post(url=self.read_url, data=json.dumps(read_playload),
+            read_payload = {'read_filter': {'status': 'queued'}}
+            response = requests.post(url=self.read_url, data=json.dumps(read_payload),
                                      headers={'content-type': 'application/json'})
             doc_list = response.json()['response']
             #logger.debug('{} new download waiting to be started'.format(len(doc_list)))
@@ -102,6 +101,7 @@ class PytubeThread(threading.Thread):
         self.download_dir = dirlocation
         self.item_id = itemid
         self.update_url = update_url
+        self.thread_name = 'download_thread_{}'.format(itemid)
 
 
 
@@ -141,7 +141,7 @@ class PytubeThread(threading.Thread):
 
             data = {'update_filter': {'item_id': self.item_id},
                     'update_aggregation': [
-                        {'$set': {'status': 'error'}}]}
+                        {'$set': {'status': 'error', 'ready_time': time.time()}}]}
             response = requests.put(url=self.update_url, data=json.dumps(data),
                                     headers={'content-type': 'application/json'})
             response_dict = json.loads(response.content)
@@ -150,7 +150,58 @@ class PytubeThread(threading.Thread):
             logger.debug('Error when downloading {}'.format(self.item_id))
 
 
-#if __name__ == '__main__':
+class ClearnerThread(threading.Thread):
+    """
+    A thread that runs
+    in mid time interval to check for any records in db that are in ready or error status.
+    If the ready_time exceeds the timeout time, then 1) delete the record (or transfer
+    the record in a different db for statistics tracking, like what most wanted ytb item by users) in db
+    2) delete the local file,
+    """
+    def __init__(self):
+        super(TheThread, self).__init__()
+        db_info_dict = {
+            'db_url': '172.17.0.4',
+            'db_port': '27017',
+            'db_name': 'ytb_temp_file',
+            'col_name': 'id_timestamp_status'
+        }
+        self.read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_info_dict['db_url'],
+                                                                                        db_info_dict['db_port'],
+                                                                                        db_info_dict['db_name'],
+                                                                                        db_info_dict['col_name'])
+        self.update_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
+                                                                                            db_info_dict['db_port'],
+                                                                                            db_info_dict['db_name'],
+                                                                                            db_info_dict['col_name'])
+        self.delete_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/delete'.format(db_info_dict['db_url'],
+                                                                                            db_info_dict['db_port'],
+                                                                                            db_info_dict['db_name'],
+                                                                                            db_info_dict['col_name'])
+        self.temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
+        self.thread_name = 'cleaner_thread'
+    def clean_ready_records(self, record_list):
+        # TODO: delete record in db, then delete local files
+
+        pass
+    def clean_error_records(self):
+        pass
+    def run(self):
+        logger.debug('the cleaner thread is running!!!!')
+        # TODO: The loop should be run every 1 - 5 minutes
+        # TODO: When receiving request, the server will also check records in ready status to see if it's in there,
+        #  if so, set the ready_time to the current time to avoid the record being cleaned up
+        while True:
+            read_payload = {'read_filter': {'status': 'ready'}}
+            response = requests.post(url=self.read_url, data=json.dumps(read_payload),
+                                     headers={'content-type': 'application/json'})
+            ready_list = response.json()['response']
+            read_payload = {'read_filter': {'status': 'error'}}
+            response = requests.post(url=self.read_url, data=json.dumps(read_payload),
+                                     headers={'content-type': 'application/json'})
+            error_list = response.json()['response']
+
+    #if __name__ == '__main__':
     #main_thread = TheThread()
     #main_thread.start()
 
@@ -233,8 +284,8 @@ class PytubeThread(threading.Thread):
                                                                                db_info_dict['col_name'])
     time_out = 600
 
-    read_playload = {'read_filter': {'status': 'queued'}}
-    response = requests.post(url=read_url, data=json.dumps(read_playload),
+    read_payload = {'read_filter': {'status': 'queued'}}
+    response = requests.post(url=read_url, data=json.dumps(read_payload),
                              headers={'content-type': 'application/json'})
     doc_list = response.json()['response']
     for doc in doc_list:

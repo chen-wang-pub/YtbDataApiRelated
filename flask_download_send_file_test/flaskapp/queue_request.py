@@ -94,9 +94,9 @@ def handling_get_download_request():
                                 status=400,
                                 mimetype='application/json')"""
         doc = generate_doc(video_id)
-        read_playload = {'read_filter': {'item_id': video_id}}
+        read_payload = {'read_filter': {'item_id': video_id}}
         try:
-            upload_if_not_exist(doc, read_playload, read_url, write_url)
+            upload_if_not_exist(doc, read_payload, read_url, write_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
                                                               "/ytbaudiodownload/v0/downloadbyvideoid/{} "
@@ -139,9 +139,9 @@ def handling_post_download_request():
                                 status=400,
                                 mimetype='application/json')
         doc = generate_doc(video_id)
-        read_playload = {'read_filter': {'item_id': video_id}}
+        read_payload = {'read_filter': {'item_id': video_id}}
         try:
-            upload_if_not_exist(doc, read_playload, read_url, write_url)
+            upload_if_not_exist(doc, read_payload, read_url, write_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
                                                               "/ytbaudiodownload/v0/downloadbyvideoid/{} "

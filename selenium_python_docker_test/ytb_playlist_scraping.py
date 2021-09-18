@@ -89,8 +89,8 @@ def crawl_ytb_user_videos(source_url='https://www.youtube.com/channel/UCDK54OyzW
 
     number_added_doc = 0
     for doc in ytb_doc_list:
-        read_playload = {'read_filter': {'item_id': doc['item_id']}}
-        if upload_if_not_exist(doc, read_playload, read_url, write_url):
+        read_payload = {'read_filter': {'item_id': doc['item_id']}}
+        if upload_if_not_exist(doc, read_payload, read_url, write_url):
             number_added_doc += 1
     return number_added_doc
 

@@ -146,9 +146,9 @@ def extract_spotify_playlist(play_list_id='0dRizWkhzplGjqvULihR72', country_code
 
     number_added_doc = 0
     for doc in spotify_song_docs:
-        read_playload = {'read_filter': {'name': doc['name'], 'duration_ms': doc['duration_ms'],
+        read_payload = {'read_filter': {'name': doc['name'], 'duration_ms': doc['duration_ms'],
                                          'album_name': doc['album_name'], 'artists': doc['artists']}}
-        if upload_if_not_exist(doc, read_playload, read_url,write_url):
+        if upload_if_not_exist(doc, read_payload, read_url,write_url):
             number_added_doc += 1
     return number_added_doc
 

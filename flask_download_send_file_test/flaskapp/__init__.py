@@ -76,11 +76,10 @@ def create_app(test_config=None):
                                                                                                     'col_name'])
             self.temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
             self.thread_name = 'main_thread'
-            self.timeout = 600
 
         def create_folder_start_download(self, item_id):
             """
-            Check if dir exist, if not, create it, and start the download thread with timeout,
+            Check if dir exist, if not, create it, and start the download thread
             item_id, use item_id as thread name, dir location
             :param item_id:
             :return:
@@ -89,8 +88,8 @@ def create_app(test_config=None):
         def run(self):
             app.logger.debug('the main thread is running!!!!')
             while True:
-                read_playload = {'read_filter': {'status': 'queued'}}
-                response = requests.post(url=self.read_url, data=json.dumps(read_playload),
+                read_payload = {'read_filter': {'status': 'queued'}}
+                response = requests.post(url=self.read_url, data=json.dumps(read_payload),
                                          headers={'content-type': 'application/json'})
                 doc_list = response.json()['response']
                 # logger.debug('{} new download waiting to be started'.format(len(doc_list)))
@@ -139,6 +138,7 @@ def create_app(test_config=None):
             self.download_dir = dirlocation
             self.item_id = itemid
             self.update_url = update_url
+            self.thread_name = 'download_thread_{}'.format(itemid)
 
         def on_complete(self, stream, file_handle):
             """
@@ -175,7 +175,7 @@ def create_app(test_config=None):
 
                 data = {'update_filter': {'item_id': self.item_id},
                         'update_aggregation': [
-                            {'$set': {'status': 'error'}}]}
+                            {'$set': {'status': 'error', 'ready_time': time.time()}}]}
                 response = requests.put(url=self.update_url, data=json.dumps(data),
                                         headers={'content-type': 'application/json'})
                 response_dict = json.loads(response.content)
