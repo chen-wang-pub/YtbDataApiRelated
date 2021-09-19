@@ -5,10 +5,15 @@ import json
 import requests
 import logging
 import traceback
+import shutil
+import traceback
+import sys
 
 from pytube import YouTube
 
 logger = logging.getLogger('the_thread')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 # TODO: When the item id is invalid. The download thread will hang for some unknown reason, add check and use NnHrMMuRmo for further investigation
 class TheThread(threading.Thread):
     """
@@ -159,7 +164,7 @@ class ClearnerThread(threading.Thread):
     2) delete the local file,
     """
     def __init__(self):
-        super(TheThread, self).__init__()
+        super(ClearnerThread, self).__init__()
         db_info_dict = {
             'db_url': '172.17.0.4',
             'db_port': '27017',
@@ -180,12 +185,46 @@ class ClearnerThread(threading.Thread):
                                                                                             db_info_dict['col_name'])
         self.temp_dir_loc = os.path.join(os.path.dirname(__file__), 'temp_storage')
         self.thread_name = 'cleaner_thread'
-    def clean_ready_records(self, record_list):
+        self.max_timeout = 1200
+    def clean_ready_records(self, record_list, current_time):
         # TODO: delete record in db, then delete local files
+        for doc in record_list:
+            if current_time - doc['ready_time'] > self.max_timeout:
+                data = {'delete_filter': {'item_id': doc['item_id']}}
 
-        pass
-    def clean_error_records(self):
-        pass
+                response = requests.delete(url=self.delete_url, data=json.dumps(data),
+                                           headers={'content-type': 'application/json'})
+                response_dict = json.loads(response.content)
+                logger.debug('delete status is {}'.format(response_dict['delete_status']))
+
+                dir_to_delete = r'{}/{}'.format(self.temp_dir_loc, doc['item_id'])
+                if os.path.isdir(dir_to_delete):
+                    try:
+                        shutil.rmtree(dir_to_delete)
+                        logger.debug('{} is deleted'.format(dir_to_delete))
+                    except OSError as e:
+                        logger.error('Error when deleting {}'.format(dir_to_delete))
+                        logger.error(traceback.format_exc())
+
+
+    def clean_error_records(self, record_list, current_time):
+        for doc in record_list:
+            if current_time - doc['ready_time'] > self.max_timeout:
+                data = {'delete_filter': {'item_id': doc['item_id']}}
+
+                response = requests.delete(url=self.delete_url, data=json.dumps(data),
+                                           headers={'content-type': 'application/json'})
+                response_dict = json.loads(response.content)
+                logger.debug('delete status is {}'.format(response_dict['delete_status']))
+
+                dir_to_delete = r'{}/{}'.format(self.temp_dir_loc, doc['item_id'])
+                if os.path.isdir(dir_to_delete):
+                    try:
+                        shutil.rmtree(dir_to_delete)
+                        logger.debug('{} is deleted due to error status'.format(dir_to_delete))
+                    except OSError as e:
+                        logger.error('Error when deleting {}'.format(dir_to_delete))
+                        logger.error(traceback.format_exc())
     def run(self):
         logger.debug('the cleaner thread is running!!!!')
         # TODO: The loop should be run every 1 - 5 minutes
@@ -196,14 +235,19 @@ class ClearnerThread(threading.Thread):
             response = requests.post(url=self.read_url, data=json.dumps(read_payload),
                                      headers={'content-type': 'application/json'})
             ready_list = response.json()['response']
+            #logger.debug(len(ready_list))
+            self.clean_ready_records(ready_list, time.time())
             read_payload = {'read_filter': {'status': 'error'}}
             response = requests.post(url=self.read_url, data=json.dumps(read_payload),
                                      headers={'content-type': 'application/json'})
             error_list = response.json()['response']
+            #logger.debug(len(error_list))
+            self.clean_error_records(error_list, time.time())
+            time.sleep(120)
 
-    #if __name__ == '__main__':
-    #main_thread = TheThread()
-    #main_thread.start()
+if __name__ == '__main__':
+    main_thread = ClearnerThread()
+    main_thread.start()
 
     """itemid_l = 'LHhLcvmQbx8'
     itemid_s = 'Gu3IOnDQzko'
