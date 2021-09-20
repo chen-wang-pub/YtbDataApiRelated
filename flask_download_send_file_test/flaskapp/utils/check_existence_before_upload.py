@@ -1,7 +1,7 @@
 import requests
 import json
 import logging
-
+import time
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -38,6 +38,40 @@ def upload_if_not_exist(doc_to_upload, read_payload, rest_read_url, rest_write_a
         #logger.debug(response.content)
         return True
     return False
+
+
+def refresh_status(read_payload, rest_read_url, rest_update_api):
+    """
+    This function is used to update the record in DB when the status is ready.
+    The constant running cleaner thread will delete all record in ready & error status based on the ready_time. When the
+    cleaner detects the record in a 'ready to be deleted' status, it will compare the difference between the current
+    time and the ready_time. The record will be deleted when the difference exceeds certain threshold.
+    This function was designed to be used by the request queuing function that when users request an item that is
+    already in
+    1) ready status, the ready_time will be extended to the current time.
+    2) error status, the status will be changed to queued, and the queued_time will be updated tp the current time
+    :param read_payload: read_payload should contain the item_id and one item_id only
+    :param rest_read_url:
+    :param rest_update_api:
+    :return:
+    """
+    response = requests.post(url=rest_read_url, data=json.dumps(read_payload),
+                             headers={'content-type': 'application/json'})
+    doc_list = response.json()['response']
+    doc = doc_list[0]
+    if doc['status'] == 'ready':
+        data = {'update_filter': {'item_id': doc['item_id']},
+                'update_aggregation': [
+                    {'$set': {'ready_time': time.time()}}]}
+    elif doc['status'] == 'error':
+        data = {'update_filter': {'item_id': doc['item_id']},
+                'update_aggregation': [
+                    {'$set': {'status': 'queued', 'queued_time': time.time()}}]}
+    response = requests.put(url=rest_update_api, data=json.dumps(data),
+                            headers={'content-type': 'application/json'})
+    response_dict = json.loads(response.content)
+    #logger.debug('update status is {}'.format(response_dict['update_status']))
+    return response_dict['update_status']
 
 
 if __name__ == '__main__':

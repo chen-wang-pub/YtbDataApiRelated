@@ -2,7 +2,7 @@ import os
 import time
 from flask import Blueprint, Response, request, json, redirect, current_app
 
-from utils.check_existence_before_upload import upload_if_not_exist
+from utils.check_existence_before_upload import upload_if_not_exist, refresh_status
 
 db_info_dict = {
     'db_url': '172.17.0.4',
@@ -15,6 +15,10 @@ read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_in
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
 write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_info_dict['db_url'],
+                                                                             db_info_dict['db_port'],
+                                                                             db_info_dict['db_name'],
+                                                                             db_info_dict['col_name'])
+update_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
                                                                              db_info_dict['db_port'],
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
@@ -96,7 +100,8 @@ def handling_get_download_request():
         doc = generate_doc(video_id)
         read_payload = {'read_filter': {'item_id': video_id}}
         try:
-            upload_if_not_exist(doc, read_payload, read_url, write_url)
+            if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+                refresh_status(read_payload, read_url,update_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
                                                               "/ytbaudiodownload/v0/downloadbyvideoid/{} "
