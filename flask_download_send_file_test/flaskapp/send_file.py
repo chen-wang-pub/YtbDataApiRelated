@@ -1,7 +1,7 @@
 import os
 import time
+import requests
 from flask import Blueprint, Response, request, json, redirect, current_app
-
 db_info_dict = {
     'db_url': '172.17.0.4',
     'db_port': '27017',
@@ -13,6 +13,10 @@ read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_in
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
 write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_info_dict['db_url'],
+                                                                             db_info_dict['db_port'],
+                                                                             db_info_dict['db_name'],
+                                                                             db_info_dict['col_name'])
+update_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
                                                                              db_info_dict['db_port'],
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
@@ -44,6 +48,18 @@ def retrieve_guide_page():
     return html_str
 
 
+def resend_request(item_id):
+    html_str = """<head>Please send your request again with item_id: {} following /ytbaudiodownload/v0/howto </head>"""\
+        .format(item_id)
+    return html_str
+
+
+def check_back_later(item_id):
+    html_str = """<head>Request queued. Please check back again later with item_id: {} following /ytbaudiodownload/v0/retrieveguide </head>"""\
+        .format(item_id)
+    return html_str
+
+
 @access_request.route('/ytbaudiodownload/v0/retrievebyid', methods=['GET', 'POST'])
 def retrieve_video_id():
     if request.method == 'GET':
@@ -56,4 +72,16 @@ def retrieve_video_id():
             video_id = data['item_id']
     if not video_id:
         return redirect('/ytbaudiodownload/v0/retrieveguide')
-
+    read_payload = {'read_filter': {'item_id': video_id}}
+    response = requests.post(url=read_url, data=json.dumps(read_payload),
+                                         headers={'content-type': 'application/json'})
+    doc_list = response.json()['response']
+    doc = doc_list[0]
+    if doc['status'] == 'error':
+        return resend_request(video_id)
+    elif doc['status'] == 'queued':
+        return check_back_later(video_id)
+    elif doc['status'] == 'transferring':
+        return check_back_later(video_id)
+    elif doc['status'] == 'ready':
+        pass
