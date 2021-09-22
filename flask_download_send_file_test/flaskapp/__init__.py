@@ -10,6 +10,7 @@ from flask import Flask
 from pytube import YouTube
 
 from queue_request import queue_request
+from send_file import access_request
 #from the_thread import TheThread
 from logging.config import dictConfig
 def create_app(test_config=None):
@@ -44,7 +45,7 @@ def create_app(test_config=None):
 
     app.logger.debug('flask app started')
     app.register_blueprint(queue_request)
-
+    app.register_blueprint(access_request)
 
     #app.register_blueprint(send_file)
     class TheThread(threading.Thread):

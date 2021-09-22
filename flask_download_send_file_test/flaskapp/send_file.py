@@ -1,7 +1,7 @@
 import os
 import time
 import requests
-from flask import Blueprint, Response, request, json, redirect, current_app
+from flask import Blueprint, Response, request, json, redirect, current_app, send_file, after_this_request
 db_info_dict = {
     'db_url': '172.17.0.4',
     'db_port': '27017',
@@ -76,6 +76,8 @@ def retrieve_video_id():
     response = requests.post(url=read_url, data=json.dumps(read_payload),
                                          headers={'content-type': 'application/json'})
     doc_list = response.json()['response']
+    if len(doc_list) < 1:
+        return resend_request(video_id)
     doc = doc_list[0]
     if doc['status'] == 'error':
         return resend_request(video_id)
@@ -83,5 +85,34 @@ def retrieve_video_id():
         return check_back_later(video_id)
     elif doc['status'] == 'transferring':
         return check_back_later(video_id)
+    elif doc['status'] == 'downloading':
+        return check_back_later(video_id)
     elif doc['status'] == 'ready':
-        pass
+        item_dir = os.path.join(temp_dir_loc, video_id)
+        item_path = os.path.join(item_dir, video_id)
+        file_name = doc['title']
+        if os.path.isfile(item_path):
+            data = {'update_filter': {'item_id': video_id},
+                    'update_aggregation': [{'$set': {'status': 'transferring'}}]}
+            response = requests.put(url=update_url, data=json.dumps(data),
+                                    headers={'content-type': 'application/json'})
+            response_dict = json.loads(response.content)
+            current_app.logger.debug('update status is {} for item {} when transferring'.format(
+                response_dict['update_status'], video_id))
+            response = send_file(item_path, as_attachment=True, download_name=file_name)
+            @after_this_request
+            def add_close_action(response):
+
+                data = {'update_filter': {'item_id': video_id},
+                            'update_aggregation': [{'$set': {'status': 'ready'}}]}
+                requests.put(url=update_url, data=json.dumps(data),
+                                            headers={'content-type': 'application/json'})
+
+
+                return response
+
+            return response
+        else:
+            current_app.logger.error('file not found for {} when transferring item'.format(video_id))
+            return check_back_later()
+    return 'unhandled status'
