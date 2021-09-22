@@ -1,6 +1,6 @@
 import subprocess
 def run(cmd):
-    completed = subprocess.call("powershell "+cmd, shell=True)
+    completed = subprocess.run("powershell "+cmd, shell=True,  text=True, input="y")
     return completed
 
 
