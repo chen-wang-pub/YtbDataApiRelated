@@ -126,27 +126,11 @@ def handling_post_download_request():
         return redirect('ytbaudiodownload/v0/howto')
     video_id = retrieve_video_id(data['url'])
     if verify_video_id(video_id):
-        new_temp_dir = r'{}/{}'.format(temp_dir_loc, video_id)
-        try:
-            os.makedirs(new_temp_dir)
-        except OSError as err:
-            if err.errno == 17:
-                return Response(response=json.dumps({"Succeeded": "Download for {} is already queued. "
-                                                                  "Please use "
-                                                                  "/ytbaudiodownload/v0/downloadbyvideoid/{} "
-                                                                  "for checking status and "
-                                                                  "retrieving the file".format(video_id, video_id)}),
-                                status=200,
-                                mimetype='application/json')
-            else:
-                current_app.logger.error('Error when making temp directory for {}'.format(video_id))
-                return Response(response=json.dumps({"Error": "Error when queuing the task"}),
-                                status=400,
-                                mimetype='application/json')
         doc = generate_doc(video_id)
         read_payload = {'read_filter': {'item_id': video_id}}
         try:
-            upload_if_not_exist(doc, read_payload, read_url, write_url)
+            if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+                refresh_status(read_payload, read_url, update_url)
             return Response(response=json.dumps({"Succeeded": "Download for {} is queued. "
                                                               "Please use "
                                                               "/ytbaudiodownload/v0/downloadbyvideoid/{} "
@@ -158,6 +142,7 @@ def handling_post_download_request():
             return Response(response=json.dumps({"Error": "Error when queuing request into database"}),
                             status=400,
                             mimetype='application/json')
+
     return Response(response=json.dumps({"Error": "Video ID error"}),
                     status=400,
                     mimetype='application/json')
