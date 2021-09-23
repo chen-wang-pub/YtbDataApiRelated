@@ -4,7 +4,7 @@ import os
 import time
 import json
 import requests
-import logging
+import subprocess
 import traceback
 from flask import Flask
 from pytube import YouTube
@@ -142,13 +142,38 @@ def create_app(test_config=None):
             self.update_url = update_url
             self.thread_name = 'download_thread_{}'.format(itemid)
 
+        def convert_audio(self, source_file, result_file):
+            """
+            convert the downloaded file to mp3
+            :param source_file: path to the file to be converted
+            :param result_file: should be path to the file with .mp3 extension
+            :return:
+            """
+            # added single quote to deal with the space in file path
+            command = "powershell C:\\ffmpeg\\bin\\ffmpeg.exe -i '{}' '{}'".format(source_file, result_file)
+            #app.logger.debug(command)
+            completed = subprocess.run(command, capture_output=True, shell=True, text=True, input="y")
+            #app.logger.debug(completed.stdout)
+            #app.logger.debug(completed.stderr)
+            return completed.returncode
+
         def on_complete(self, stream, file_handle):
             """
 
             :param file_handle:
             :return:
             """
-
+            source_file = os.path.join(self.download_dir, self.item_id)
+            converted_file = os.path.join(self.download_dir, '{}.mp3'.format(self.title))
+            if self.convert_audio(source_file, converted_file) != 0:
+                app.logger.error('Error when converting downloaded file {}'.format(self.item_id))
+                data = {'update_filter': {'item_id': self.item_id},
+                        'update_aggregation': [
+                            {'$set': {'status': 'error', 'ready_time': time.time()}}]}
+                return requests.put(url=self.update_url, data=json.dumps(data),
+                                    headers={'content-type': 'application/json'})
+            os.remove(source_file)
+            app.logger.debug('conversion finished. result file is {}'.format(converted_file))
             data = {'update_filter': {'item_id': self.item_id},
                     'update_aggregation': [
                         {'$set': {'status': 'ready', 'ready_time': time.time(), 'title': self.title}}]}
@@ -184,6 +209,7 @@ def create_app(test_config=None):
                 # logger.debug('update status is {}'.format(response_dict['update_status']))
                 app.logger.debug('update status is {}'.format(response_dict['update_status']))
                 app.logger.debug('Error when downloading {}'.format(self.item_id))
+
 
     class ClearnerThread(threading.Thread):
         """

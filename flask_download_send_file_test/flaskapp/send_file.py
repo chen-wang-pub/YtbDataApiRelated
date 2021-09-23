@@ -88,9 +88,9 @@ def retrieve_video_id():
     elif doc['status'] == 'downloading':
         return check_back_later(video_id)
     elif doc['status'] == 'ready':
+        file_name = '{}.mp3'.format(doc['title'])
         item_dir = os.path.join(temp_dir_loc, video_id)
-        item_path = os.path.join(item_dir, video_id)
-        file_name = doc['title']
+        item_path = os.path.join(item_dir, file_name)
         if os.path.isfile(item_path):
             data = {'update_filter': {'item_id': video_id},
                     'update_aggregation': [{'$set': {'status': 'transferring'}}]}

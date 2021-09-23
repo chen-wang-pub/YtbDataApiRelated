@@ -8,6 +8,7 @@ import traceback
 import shutil
 import traceback
 import sys
+import subprocess
 
 from pytube import YouTube
 
@@ -96,9 +97,9 @@ class TheThread(threading.Thread):
 
             time.sleep(10)
 
+
 class PytubeThread(threading.Thread):
     ytb_base_url = 'https://www.youtube.com/watch?v='
-
 
     def __init__(self, itemid, dirlocation, update_url):
         super(PytubeThread, self).__init__()
@@ -108,7 +109,20 @@ class PytubeThread(threading.Thread):
         self.update_url = update_url
         self.thread_name = 'download_thread_{}'.format(itemid)
 
-
+    def convert_audio(self, source_file, result_file):
+        """
+        convert the downloaded file to mp3
+        :param source_file: path to the file to be converted
+        :param result_file: should be path to the file with .mp3 extension
+        :return:
+        """
+        # added single quote to deal with the space in file path
+        command = "powershell C:\\ffmpeg\\bin\\ffmpeg.exe -i '{}' '{}'".format(source_file, result_file)
+        # logger.debug(command)
+        completed = subprocess.run(command, capture_output=True, shell=True, text=True, input="y")
+        # logger.debug(completed.stdout)
+        # logger.debug(completed.stderr)
+        return completed.returncode
 
     def on_complete(self, stream, file_handle):
         """
@@ -116,25 +130,34 @@ class PytubeThread(threading.Thread):
         :param file_handle:
         :return:
         """
-
+        source_file = os.path.join(self.download_dir, self.item_id)
+        converted_file = os.path.join(self.download_dir, '{}.mp3'.format(self.title))
+        if self.convert_audio(source_file, converted_file) != 0:
+            logger.error('Error when converting downloaded file {}'.format(self.item_id))
+            data = {'update_filter': {'item_id': self.item_id},
+                    'update_aggregation': [
+                        {'$set': {'status': 'error', 'ready_time': time.time()}}]}
+            return requests.put(url=self.update_url, data=json.dumps(data),
+                                headers={'content-type': 'application/json'})
+        os.remove(source_file)
+        logger.debug('conversion finished. result file is {}'.format(converted_file))
         data = {'update_filter': {'item_id': self.item_id},
-                'update_aggregation': [{'$set': {'status': 'ready', 'ready_time': time.time(), 'title': self.title}}]}
+                'update_aggregation': [
+                    {'$set': {'status': 'ready', 'ready_time': time.time(), 'title': self.title}}]}
         response = requests.put(url=self.update_url, data=json.dumps(data),
                                 headers={'content-type': 'application/json'})
         response_dict = json.loads(response.content)
-        #logger.debug('update status is {}'.format(response_dict['update_status']))
+        # logger.debug('update status is {}'.format(response_dict['update_status']))
         logger.debug('update status is {}'.format(response_dict['update_status']))
-
 
     def download_best_audio(self):
         yt = YouTube(self.download_url, on_complete_callback=self.on_complete)
         self.title = yt.title
-        #logger.debug('about to download {} from url: {}'.format(yt.title, self.download_url))
+        # logger.debug('about to download {} from url: {}'.format(yt.title, self.download_url))
         all_stream = yt.streams.filter(only_audio=True)
         best_quality = all_stream[-1]  # last in list
         stream = yt.streams.get_by_itag(best_quality.itag)
         return stream.download(output_path=self.download_dir, filename=self.item_id)
-
 
     def run(self):
         logger.debug('Starting the download of {}'.format(self.item_id))
