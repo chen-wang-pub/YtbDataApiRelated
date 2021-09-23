@@ -11,3 +11,11 @@ objective_queue = [
     'Refactor part of or the whole project using message queue',
 ]
 
+new_objective_queue = [
+    'try use ffmpeg in docker for file conversion',
+    'better server debug log',
+    'a deployment plan for the server (in a linux vm maybe)',
+    'better flask viewpoint',
+    'sync the post and get method for the server',
+    'can split the queuing and file sending routes',
+]
