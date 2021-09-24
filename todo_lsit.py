@@ -12,10 +12,15 @@ objective_queue = [
 ]
 
 new_objective_queue = [
-    'try use ffmpeg in docker for file conversion',
+    #'try use ffmpeg in docker for file conversion', #scratched this one cuz it seems the ffmpeg in docker only handles files with public address, but I want it to convert file locally stored in the server
     'better server debug log',
     'a deployment plan for the server (in a linux vm maybe)',
     'better flask viewpoint',
     'sync the post and get method for the server',
     'can split the queuing and file sending routes',
+]
+
+another_server = [
+    'a server that stores session data from users about what item they requested',
+    'it stores if the user wants to convert a spotify list, or ytb playlist, or just some ytb items'
 ]
