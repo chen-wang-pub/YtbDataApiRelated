@@ -6,3 +6,5 @@ app = Celery('celery_tutorial', backend='redis://localhost', broker='pyamqp://gu
 def add(x, y):
     return x + y
 
+result = add.delay(4,4)
+print(result.get())
