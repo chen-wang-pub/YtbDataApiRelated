@@ -1,0 +1,11 @@
+# for rabbitmq
+docker run -d -h run-rabbit-run --name some-rabbit rabbitmq
+
+# for mongodb
+docker run -d -p 27017:27017 --name a-mongo mongo
+
+# for selenium firefox standalone
+docker run -d -p 4444:4444 --shm-size="2g" selenium/standalone-firefox
+
+# for redis
+docker run --name the-redis -d redis
