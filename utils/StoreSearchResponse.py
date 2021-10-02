@@ -1,7 +1,7 @@
 from pymongo import MongoClient, DESCENDING
 
 
-def storeSearchResponse(doc_list, db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
+def storeSearchResponse(doc_list, db_url='localhost', db_port=27017, db_name='YtbDataApiSearched',
                         col_name='YtbSearchRecord'):
     """
     Expecting youtube data api response in json format as the example at the end of the file
@@ -52,7 +52,7 @@ def storeSearchResponse(doc_list, db_url='localhost', db_port=1024, db_name='Ytb
         collection.replace_one({"etag": doc_record['etag']}, final_record, upsert=True)
 
 
-def get_all_doc_contains_query_string(query_string, db_url='localhost', db_port=1024, db_name='YtbDataApiSearched',
+def get_all_doc_contains_query_string(query_string, db_url='localhost', db_port=27017, db_name='YtbDataApiSearched',
                         col_name='YtbSearchRecord'):
     """
     Search in the search record collection and return all the documents that contains the query string

@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 """api_search_record_db_dict = {
     'db_url': 'localhost',
-    'db_port': 1024,
+    'db_port': 27017,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',
 }"""

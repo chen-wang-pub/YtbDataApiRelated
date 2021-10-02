@@ -11,7 +11,7 @@ from StoreSearchResponse import storeSearchResponse, get_all_doc_contains_query_
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
     'db_url': 'localhost',
-    'db_port': 1024,
+    'db_port': 27017,
     'db_name': 'KeyPool',
     'col_name': 'YoutubeDataApi',
 }
@@ -282,11 +282,11 @@ if __name__ == '__main__':
     for api in doc['YTB_API_POOL']:
         logging.debug(api)
         #db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
-    failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 1024, 'KeyPool', 'YoutubeDataApi')
+    failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     if failed_keys:
         logging.debug(failed_keys)
 
-    test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 1024, 'KeyPool', 'YoutubeDataApi')
+    test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
     logging.debug(a)
 

@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 api_search_record_db_dict = {
     'db_url': 'localhost',
-    'db_port': 1024,
+    'db_port': 27017,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',
 }
@@ -18,7 +18,7 @@ class YtbSearchRecordDBAPI_V0:
     that stores the cached Ytb data api search records
     """
 
-    def __init__(self, payload, db_url='localhost', db_port=1024,
+    def __init__(self, payload, db_url='localhost', db_port=27017,
                  db_name='YtbDataApiSearched', col_name='YtbSearchRecord'):
         client = MongoClient(db_url, db_port)
         db = client[db_name]
