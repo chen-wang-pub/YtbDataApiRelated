@@ -1,6 +1,7 @@
 import os
 import time
 from flask import Blueprint, Response, request, json, redirect, current_app
+import traceback
 
 from utils.check_existence_before_upload import upload_if_not_exist, refresh_status
 
@@ -110,6 +111,7 @@ def handling_get_download_request():
                             status=200,
                             mimetype='application/json')
         except:
+            current_app.logger.error(traceback.format_exc())
             return Response(response=json.dumps({"Error": "Error when queuing request into database"}),
                             status=400,
                             mimetype='application/json')
