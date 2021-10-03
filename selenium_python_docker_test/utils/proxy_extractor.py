@@ -16,7 +16,7 @@ class ProxyExtractor:
     country_code_group = [['CA', 'US', ],
                           ['NL', 'DE'],]
 
-    def __init__(self, country_code, db_url='172.17.0.4', db_port=27017, db_name='proxy', col_name='sslproxies'):
+    def __init__(self, country_code, db_url='172.17.0.5', db_port=27017, db_name='proxy', col_name='sslproxies'):
         self.read_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_url, db_port, db_name,
                                                                                         col_name)
         self.country_code = country_code

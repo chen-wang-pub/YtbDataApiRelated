@@ -41,7 +41,7 @@ def upload_if_not_exist(doc_to_upload, read_payload, rest_read_url, rest_write_a
 
 
 if __name__ == '__main__':
-    db_url = '172.17.0.4'
+    db_url = '172.17.0.5'
     db_port = 27017
     database_name = 'test_db'
     collectoin_name = 'test_col'

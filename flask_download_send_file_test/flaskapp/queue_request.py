@@ -6,7 +6,7 @@ import traceback
 from utils.check_existence_before_upload import upload_if_not_exist, refresh_status
 
 db_info_dict = {
-    'db_url': '172.17.0.4',
+    'db_url': '172.17.0.5',
     'db_port': '27017',
     'db_name': 'ytb_temp_file',
     'col_name': 'id_timestamp_status'

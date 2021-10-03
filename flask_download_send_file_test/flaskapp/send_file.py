@@ -3,7 +3,7 @@ import time
 import requests
 from flask import Blueprint, Response, request, json, redirect, current_app, send_file, after_this_request
 db_info_dict = {
-    'db_url': '172.17.0.4',
+    'db_url': '172.17.0.5',
     'db_port': '27017',
     'db_name': 'ytb_temp_file',
     'col_name': 'id_timestamp_status'

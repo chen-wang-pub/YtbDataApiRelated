@@ -57,7 +57,7 @@ def create_app(test_config=None):
         def __init__(self):
             super(TheThread, self).__init__()
             db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': '172.17.0.5',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'
@@ -223,7 +223,7 @@ def create_app(test_config=None):
         def __init__(self):
             super(ClearnerThread, self).__init__()
             db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': '172.17.0.5',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'
