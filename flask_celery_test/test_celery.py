@@ -1,4 +1,4 @@
-from celery_tutorial import add
+from tasks import add
 result = add.delay(4, 4)
 
 print(result.get())
