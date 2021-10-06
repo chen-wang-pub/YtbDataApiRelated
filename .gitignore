@@ -4,3 +4,4 @@ test__*.py
 *.yaml
 *.pyc
 flask_download_send_file_test/flaskapp/temp_storage
+ffmpeg-static/
