@@ -36,7 +36,7 @@ After some search online, the workflow of the whole process should be described 
 2. server receives request, queues all the item for downloading --> 
 3 - 1. server starts a celery task that monitors the downloading status for all the item requested by the client 
 when all item are in finished status, either ready or error, the celery task will send the data back to the client,
-consists of download links to all the items that are ready to download, and items that are in error status.  -->
+consists of downloading links to all the items that are ready to download, and items that are in error status.  -->
 
 The good part is that this seems easy to implement. 
 The issue with this approach is that the client might experience a long wait time for the server finishing downloading all requested files
