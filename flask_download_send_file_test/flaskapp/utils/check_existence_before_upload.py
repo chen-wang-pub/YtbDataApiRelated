@@ -75,7 +75,7 @@ def refresh_status(read_payload, rest_read_url, rest_update_api):
 
 
 if __name__ == '__main__':
-    db_url = '172.17.0.4'
+    db_url = '172.17.0.3'
     db_port = 27017
     database_name = 'test_db'
     collectoin_name = 'test_col'

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(ch)
 
-db_url = '172.17.0.4'
+db_url = '172.17.0.3'
 db_port = 27017
 database_name = 'proxy'
 collection_name = 'sslproxies'

@@ -25,7 +25,7 @@ def generate_ytb_item_doc(video_url, video_title, video_duration, video_view):
     #  naming it as item_id is to keep consistency with the data got from youtube data api
     return {'item_id': video_id, 'title': video_title, 'duration': video_duration, 'view': video_view}
 
-def crawl_ytb_user_videos(source_url='https://www.youtube.com/channel/UCDK54OyzWnOczY7LzEd9V2Q/videos', db_url='172.17.0.4', db_port=27017):
+def crawl_ytb_user_videos(source_url='https://www.youtube.com/channel/UCDK54OyzWnOczY7LzEd9V2Q/videos', db_url='172.17.0.3', db_port=27017):
     db_name = 'ytb_playlist_from_selenium'
     col_name = ''  # extracted from scraping
 

@@ -57,7 +57,7 @@ def create_app(test_config=None):
         def __init__(self):
             super(TheThread, self).__init__()
             db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': '172.17.0.3',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'
@@ -149,8 +149,10 @@ def create_app(test_config=None):
             :param result_file: should be path to the file with .mp3 extension
             :return:
             """
-            # added single quote to deal with the space in file path
-            command = "powershell C:\\ffmpeg\\bin\\ffmpeg.exe -i '{}' '{}'".format(source_file, result_file)
+            ffmpeg_path = 'ffmpeg-static/ffmpeg'
+            ffmpeg_real_path = os.path.join(os.path.dirname(__file__), ffmpeg_path)
+
+            command = '{} -i {} {}'.format(ffmpeg_real_path, source_file, result_file)
             #app.logger.debug(command)
             completed = subprocess.run(command, capture_output=True, shell=True, text=True, input="y")
             #app.logger.debug(completed.stdout)
@@ -223,7 +225,7 @@ def create_app(test_config=None):
         def __init__(self):
             super(ClearnerThread, self).__init__()
             db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': '172.17.0.3',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'

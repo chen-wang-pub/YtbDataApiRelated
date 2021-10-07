@@ -78,7 +78,7 @@ def extract_spotify_playlist(play_list_id='0dRizWkhzplGjqvULihR72', country_code
 
     spotify_url = 'https://open.spotify.com/playlist/{}'.format(play_list_id)
     api_prefix = 'https://api.spotify.com/v1/playlists'
-    db_url = '172.17.0.4'
+    db_url = '172.17.0.3'
     db_port = 27017
     database_name = 'spotify_playlist'
     collection_name = ''#play_list_id

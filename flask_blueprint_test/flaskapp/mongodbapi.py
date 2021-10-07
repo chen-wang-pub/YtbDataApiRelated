@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
     'col_name': 'YtbSearchRecord',
 }"""
 api_search_record_db_dict = {
-    'db_url': '172.17.0.4',
+    'db_url': '172.17.0.3',
     'db_port': 27017,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',

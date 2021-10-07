@@ -24,7 +24,7 @@ class TheThread(threading.Thread):
     def __init__(self):
         super(TheThread, self).__init__()
         db_info_dict = {
-            'db_url': '172.17.0.4',
+            'db_url': '172.17.0.3',
             'db_port': '27017',
             'db_name': 'ytb_temp_file',
             'col_name': 'id_timestamp_status'
@@ -189,7 +189,7 @@ class ClearnerThread(threading.Thread):
     def __init__(self):
         super(ClearnerThread, self).__init__()
         db_info_dict = {
-            'db_url': '172.17.0.4',
+            'db_url': '172.17.0.3',
             'db_port': '27017',
             'db_name': 'ytb_temp_file',
             'col_name': 'id_timestamp_status'
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     def on_complete(stream, file_handle):
 
         db_info_dict = {
-            'db_url': '172.17.0.4',
+            'db_url': '172.17.0.3',
             'db_port': '27017',
             'db_name': 'ytb_temp_file',
             'col_name': 'id_timestamp_status'
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     logger.debug(download_best_audio(download_url, dirlocation, itemid_s)"""
 
     """db_info_dict = {
-        'db_url': '172.17.0.4',
+        'db_url': '172.17.0.3',
         'db_port': '27017',
         'db_name': 'ytb_temp_file',
         'col_name': 'id_timestamp_status'
