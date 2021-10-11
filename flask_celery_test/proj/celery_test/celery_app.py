@@ -1,7 +1,7 @@
 from celery import Celery
 
 app = Celery('celery_tutorial', backend='redis://localhost', broker='pyamqp://guest@localhost//',
-             include=['celery_test.tasks'])
+             include=['celery_test.app'])
 
 # Optional configuration, see the application user guide.
 app.conf.update(

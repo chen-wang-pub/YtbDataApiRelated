@@ -29,7 +29,7 @@ queue_request = Blueprint('queue_request', __name__)
 The workflow of the download & sending ytb audio should be as following
 
 client send api request via prefix/download/ytb_video_url
-Then server verifies ytb_video_url and create a temp url for it prefix/download/temp_url_based_on_ytb_video_id, and send the url back to the client, and queue the corresponding tasks needed for downloading the video
+Then server verifies ytb_video_url and create a temp url for it prefix/download/temp_url_based_on_ytb_video_id, and send the url back to the client, and queue the corresponding app needed for downloading the video
 The client then can use the temp url received from the server to check status of the downloading and retrieve the downloaded file
 When the download of the file is not finished, the temp url will send back the 'downloading' status, otherwise, the temp url will send back the file
 The tempurl will self destroy after certain time (5min?) from once the task is queued
