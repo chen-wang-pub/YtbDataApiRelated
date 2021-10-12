@@ -1,15 +1,22 @@
 from app import celery
 from pytube import YouTube
-from flask import current_app
+from celery.utils.log import get_task_logger
 import os
 import subprocess
+
+logger = get_task_logger((__name__))
+
 def on_complete(stream, file_handle):
     """
 
     :param file_handle:
     :return:
     """
-    current_app.logger.debug('{} download finished'.format(file_handle))
+    logger.info('{} download finished'.format(file_handle))
+    convert_audio(file_handle, '{}.mp3'.format(stream.title))
+    logger.info('{} conversion finished'.format(stream.title))
+    os.remove(file_handle)
+    logger.info('{} removed'.format(file_handle))
 
 
 def convert_audio( source_file, result_file):
@@ -38,4 +45,3 @@ def download_video(ytb_id):
     best_quality = all_stream[-1]  # last in list
     stream = yt.streams.get_by_itag(best_quality.itag)
     stream.download(output_path='', filename=yt.title)
-    convert_audio(yt.title, '{}.mp3'.format(yt.title))
