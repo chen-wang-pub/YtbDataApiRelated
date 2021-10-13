@@ -3,8 +3,17 @@ from pytube import YouTube
 from celery.utils.log import get_task_logger
 import os
 import subprocess
+import json
 
+import time
+import requests
+import traceback
+
+from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
+from app.const import update_url, read_url, write_url
 logger = get_task_logger((__name__))
+
+
 
 def on_complete(stream, file_handle):
     """
@@ -38,6 +47,15 @@ def convert_audio( source_file, result_file):
 
 @celery.task
 def download_video(ytb_id):
+    doc = generate_doc(ytb_id)
+    read_payload = {'read_filter': {'item_id': ytb_id}}
+    try:
+        if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+            refresh_status(read_payload, read_url, update_url)
+    except:
+        logger.error(traceback.format_exc())
+    logger.info('{} wrote to db'.format(ytb_id))
+
     ytb_base_url = 'https://www.youtube.com/watch?v='
     download_url = '{}{}'.format(ytb_base_url, ytb_id)
     yt = YouTube(download_url, on_complete_callback=on_complete)
@@ -45,3 +63,12 @@ def download_video(ytb_id):
     best_quality = all_stream[-1]  # last in list
     stream = yt.streams.get_by_itag(best_quality.itag)
     stream.download(output_path='', filename=yt.title)
+
+    data = {'update_filter': {'item_id': ytb_id},
+            'update_aggregation': [
+                {'$set': {'status': 'ready', 'ready_time': time.time(), 'title': yt.title}}]}
+    response = requests.put(url=update_url, data=json.dumps(data),
+                            headers={'content-type': 'application/json'})
+    response_dict = json.loads(response.content)
+    # logger.debug('update status is {}'.format(response_dict['update_status']))
+    logger.info('update status is {}'.format(response_dict['update_status']))
