@@ -50,6 +50,7 @@ def refresh_status(read_payload, rest_read_url, rest_update_api):
     already in
     1) ready status, the ready_time will be extended to the current time.
     2) error status, the status will be changed to queued, and the queued_time will be updated tp the current time
+    3) in
     :param read_payload: read_payload should contain the item_id and one item_id only
     :param rest_read_url:
     :param rest_update_api:
@@ -67,6 +68,8 @@ def refresh_status(read_payload, rest_read_url, rest_update_api):
         data = {'update_filter': {'item_id': doc['item_id']},
                 'update_aggregation': [
                     {'$set': {'status': 'queued', 'queued_time': time.time()}}]}
+    else:
+        return False
     response = requests.put(url=rest_update_api, data=json.dumps(data),
                             headers={'content-type': 'application/json'})
     response_dict = json.loads(response.content)
