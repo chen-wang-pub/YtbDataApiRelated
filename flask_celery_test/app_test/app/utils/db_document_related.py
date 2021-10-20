@@ -66,8 +66,7 @@ def refresh_status(read_payload, rest_read_url, rest_update_api):
                     {'$set': {'ready_time': time.time()}}]}
     elif doc['status'] == 'error':
         data = {'update_filter': {'item_id': doc['item_id']},
-                'update_aggregation': [
-                    {'$set': {'status': 'queued', 'queued_time': time.time()}}]}
+                'update_aggregation': [{'$set': {'status': 'queued', 'queued_time': time.time()}}]}
     else:
         return False
     response = requests.put(url=rest_update_api, data=json.dumps(data),
