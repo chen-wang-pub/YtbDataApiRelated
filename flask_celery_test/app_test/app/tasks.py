@@ -204,3 +204,43 @@ def periodic_cleaner_thread():
     error_list = response.json()['response']
     # logger.debug(len(error_list))
     clean_error_records.delay(error_list, time.time())
+
+
+@celery.task(bind=True)
+def check_queued_list(self, item_id_list):
+    """
+    Since it seems that without using socket, the frontend need to poll result from the backend to check celery task
+    status. then maybe just start a celery task that starts downloading all the item requested.
+    The view that starts this task will return the task id back to the client.
+    The client then use the task id in view to retrieve update of this task.
+    """
+    """celery_task_id_list = []
+    for ytb_id in item_id_list:
+        doc = generate_doc(ytb_id)
+        read_payload = {'read_filter': {'item_id': ytb_id}}
+        try:
+            if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+                refresh_status(read_payload, read_url, update_url)
+        except:
+            logger.error(traceback.format_exc())
+
+        celery_task = download_video.delay(ytb_id)
+        celery_task_id_list.append(celery_task.task_id)"""
+    status_dict = {}
+    while len(item_id_list) > 0:
+        for i in range(len(item_id_list)-1, -1, -1):
+            read_payload = {'read_filter': {'item_id': item_id_list[i]}}
+            response = requests.post(url=read_url, data=json.dumps(read_payload),
+                                     headers={'content-type': 'application/json'})
+            doc_list = response.json()['response']
+            if len(doc_list) != 1:
+                logger.error('sth went wrong in check_queued_list for item {}'.format(item_id_list[i]))
+                logger.error(traceback.format_exc())
+                return {"status_dict": status_dict, "status": "ERROR"}
+            if doc_list[0]['status'] == 'ready' or doc_list[0]['status'] == 'error':
+                status_dict[item_id_list[i]] = doc_list[0]['status']
+                del item_id_list[i]
+        self.update_state(state='PROGRESS', meta={"status_dict": status_dict, "status": "PROGRESS"})
+        logger.info('status sent from check_queued_list {}'.format(status_dict))
+        time.sleep(30)
+    return {"status_dict": status_dict, "status": "SUCCESS"}

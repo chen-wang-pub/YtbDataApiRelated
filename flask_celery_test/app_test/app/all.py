@@ -1,7 +1,9 @@
+import time
+
 from flask import Blueprint, request, current_app, Response, json
 import os
 import traceback
-from app.tasks import download_video
+from app.tasks import download_video, check_queued_list
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
 from app.const import update_url, read_url, write_url, delete_url
 bp = Blueprint("all", __name__)
@@ -36,5 +38,30 @@ def queue_id():
         #celery.send_task('app_test.app.celery_tasks.download_video')
         current_app.logger.info('{} is queued for downloading'.format(video_id))
     return Response(response=json.dumps({"Succeeded": "Download for {} is queued. ".format(video_ids)}),
+                    status=200,
+                    mimetype='application/json')
+
+@bp.route("/queueall")
+def queue_all():
+    video_ids = request.args.get('id', default='', type=str)
+    video_ids = video_ids.split(',')
+    for video_id in video_ids:
+
+        doc = generate_doc(video_id)
+        read_payload = {'read_filter': {'item_id': video_id}}
+        try:
+            if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+                refresh_status(read_payload, read_url, update_url)
+        except:
+            current_app.logger.error(traceback.format_exc())
+        current_app.logger.info('{} wrote to db'.format(video_id))
+
+        #celery.send_task('app_test.app.celery_tasks.download_video')
+        current_app.logger.info('{} is queued for downloading'.format(video_id))
+    celery_task = check_queued_list.delay(video_ids)
+    while not celery_task.ready():
+        time.sleep(15)
+        current_app.logger.info(f'State={celery_task.state}, info={celery_task.info}')
+    return Response(response=json.dumps({"Succeeded": "The uuid is {} ".format(celery_task.task_id)}),
                     status=200,
                     mimetype='application/json')
