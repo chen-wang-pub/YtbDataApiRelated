@@ -1,5 +1,4 @@
 import time
-
 from flask import Blueprint, request, current_app, Response, json
 import os
 import traceback
@@ -59,9 +58,20 @@ def queue_all():
         #celery.send_task('app_test.app.celery_tasks.download_video')
         current_app.logger.info('{} is queued for downloading'.format(video_id))
     celery_task = check_queued_list.delay(video_ids)
-    while not celery_task.ready():
-        time.sleep(15)
-        current_app.logger.info(f'State={celery_task.state}, info={celery_task.info}')
-    return Response(response=json.dumps({"Succeeded": "The uuid is {} ".format(celery_task.task_id)}),
+    return Response(response=json.dumps({"uuid": celery_task.task_id}),
                     status=200,
                     mimetype='application/json')
+
+
+@bp.route("/retrievetask/<uuid>")
+def retrieve_task(uuid):
+    current_app.logger.info('uuid from route is {}'.format(uuid))
+    task_result = check_queued_list.AsyncResult(uuid)
+    if task_result:
+        return Response(response=json.dumps({"task_result":task_result.info }),
+                        status=200,
+                        mimetype='application/json')
+    else:
+        return Response(response=json.dumps({"error": "invalid uuid"}),
+                        status=200,
+                        mimetype='application/json')

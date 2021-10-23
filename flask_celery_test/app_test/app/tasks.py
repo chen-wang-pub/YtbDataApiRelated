@@ -240,6 +240,8 @@ def check_queued_list(self, item_id_list):
             if doc_list[0]['status'] == 'ready' or doc_list[0]['status'] == 'error':
                 status_dict[item_id_list[i]] = doc_list[0]['status']
                 del item_id_list[i]
+            else:
+                status_dict[item_id_list[i]] = doc_list[0]['status']
         self.update_state(state='PROGRESS', meta={"status_dict": status_dict, "status": "PROGRESS"})
         logger.info('status sent from check_queued_list {}'.format(status_dict))
         time.sleep(30)
