@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
 PKG_NAME = os.path.dirname(os.path.realpath(__file__)).split("/")[-1]
-
+db = SQLAlchemy()
 def create_app(app_name=PKG_NAME, **kwargs):
     app = Flask(app_name)
     if kwargs.get("celery"):
@@ -17,8 +17,12 @@ def create_app(app_name=PKG_NAME, **kwargs):
     app.register_blueprint(paid_user)
 
     app.config.from_object(Config)
-    #db = SQLAlchemy(app)
-    #migrate = Migrate(app, db)
+    from app import models
 
-    #from app import models
+    db.init_app(app)
+    migrate = Migrate(app, db)
+
+    @app.shell_context_processor
+    def make_shell_context():
+        return {'db':db}
     return app
