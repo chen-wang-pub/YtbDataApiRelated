@@ -3,9 +3,11 @@ import os
 from .celery_utils import init_celery
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager
 
 PKG_NAME = os.path.dirname(os.path.realpath(__file__)).split("/")[-1]
 db = SQLAlchemy()
+login = LoginManager()
 def create_app(app_name=PKG_NAME, **kwargs):
     app = Flask(app_name)
     if kwargs.get("celery"):
@@ -20,6 +22,8 @@ def create_app(app_name=PKG_NAME, **kwargs):
     from app import models
 
     db.init_app(app)
+    login.init_app(app)
+    login.login_view = 'paid_user.login'
     migrate = Migrate(app, db)
 
     @app.shell_context_processor
