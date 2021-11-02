@@ -1,10 +1,17 @@
-from flask import Blueprint, request, current_app, Response, json, render_template, flash, redirect, url_for
-from app.forms import LoginForm, RegistrationForm
+from flask import Blueprint, request, current_app, Response, json, render_template, flash, redirect, url_for, jsonify
+from app.forms import LoginForm, RegistrationForm, DownloadRequestForm
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app.models import User
 from app.factory import db
 paid_user = Blueprint("paid_user", __name__)
+
+
+def placeholder_linkprocessing(data):
+    if data:
+        return 'data: {} has been processed by placeholder function'.format(data)
+    else:
+        return 'data is empty'
 
 
 @paid_user.route("/index")
@@ -63,3 +70,24 @@ def register():
         flash('Congratulations, you are now a registered user!')
         return redirect(url_for('paid_user.login'))
     return render_template('register.html', title='Register', form=form)
+
+
+@paid_user.route('/download', methods=['GET'])
+def download():
+    form = RegistrationForm()
+    return render_template('download.html', title='Download', form=form)
+
+
+@paid_user.route('/processdownload', methods=['POST'])
+def processdownload():
+    form = DownloadRequestForm()
+    if form.validate_on_submit():
+        ytbvideo = form.ytbvideo.data
+        ytblist = form.ytblist.data
+        spotifylist = form.spotifylist.data
+        to_return = 'ytbvideo:{} \nytblist:{} \nspotifylist:{}'.format(placeholder_linkprocessing(ytbvideo),
+                                                                       placeholder_linkprocessing(ytblist),
+                                                                       placeholder_linkprocessing(spotifylist))
+        return jsonify({"text": to_return})
+    else:
+        return jsonify({"error": "form.validate_on_submit() failed"})
