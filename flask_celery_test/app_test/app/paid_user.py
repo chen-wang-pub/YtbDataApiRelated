@@ -74,7 +74,7 @@ def register():
 
 @paid_user.route('/download', methods=['GET'])
 def download():
-    form = RegistrationForm()
+    form = DownloadRequestForm()
     return render_template('download.html', title='Download', form=form)
 
 
@@ -90,4 +90,4 @@ def processdownload():
                                                                        placeholder_linkprocessing(spotifylist))
         return jsonify({"text": to_return})
     else:
-        return jsonify({"error": "form.validate_on_submit() failed"})
+        return jsonify({"error": form.errors})

@@ -31,9 +31,10 @@ class RegistrationForm(FlaskForm):
 
 
 class DownloadRequestForm(FlaskForm):
-    ytbvideo = StringField('Youtube Video Link', validators=[URL()])
-    ytblist = StringField('Youtube Playlist Link', validators=[URL()])
-    spotifylist = StringField('Spotify Playlist Link', validators=[URL()])
+    ytbvideo = StringField('Youtube Video Link', validators=[])
+    ytblist = StringField('Youtube Playlist Link', validators=[])
+    spotifylist = StringField('Spotify Playlist Link', validators=[])
+    submit = SubmitField('Download')
 
     def validate(self, extra_validators=None):
         # https://stackoverflow.com/questions/64222815/flask-wtforms-validation-inputrequired-for-at-least-one-field

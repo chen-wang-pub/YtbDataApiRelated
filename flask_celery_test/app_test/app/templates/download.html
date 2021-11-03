@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Download Link</h1>
+    <form action="{{ url_for('paid_user.processdownload') }}" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.ytbvideo.label }}<br>
+            {{ form.ytbvideo(size=128) }}<br>
+            {% for error in form.ytbvideo.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.ytblist.label }}<br>
+            {{ form.ytblist(size=128) }}<br>
+            {% for error in form.ytblist.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.spotifylist.label }}<br>
+            {{ form.spotifylist(size=128) }}<br>
+            {% for error in form.spotifylist.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+<span id></span>
+{% endblock %}
