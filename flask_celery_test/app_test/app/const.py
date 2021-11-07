@@ -26,3 +26,27 @@ write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_
 MAX_TIMEOUT = 2400
 
 TEMP_DIR_LOC = join(dirname(__file__), 'temp_storage')
+
+
+dynamic_db_url_template = {
+    'read':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/read'.format(db_info_dict['db_url'],
+                                                                                            db_info_dict['db_port'],
+                                                                                            '{}',
+                                                                                            '{}'),
+    'delete':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/delete'.format(db_info_dict['db_url'],
+                                                                                                db_info_dict['db_port'],
+                                                                                       '{}',
+                                                                                       '{}'),
+    'update':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/update'.format(db_info_dict['db_url'],
+                                                                                        db_info_dict['db_port'],
+                                                                                        '{}',
+                                                                                        '{}'),
+    'write':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_info_dict['db_url'],
+                                                                             db_info_dict['db_port'],
+                                                                                     '{}',
+                                                                                     '{}')
+}
+
+spotify_db = 'spotify_playlist'
+
+ytb_playlist_db = 'ytb_playlist_from_selenium'

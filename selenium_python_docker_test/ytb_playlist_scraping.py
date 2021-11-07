@@ -29,7 +29,7 @@ def crawl_ytb_user_videos(source_url='https://www.youtube.com/channel/UCDK54OyzW
     db_name = 'ytb_playlist_from_selenium'
     col_name = ''  # extracted from scraping
 
-    command_executor = 'http://localhost:4445/wd/hub'
+    command_executor = 'http://localhost:4444/wd/hub'
 
     driver = webdriver.Remote(command_executor, desired_capabilities=DesiredCapabilities.FIREFOX)
 

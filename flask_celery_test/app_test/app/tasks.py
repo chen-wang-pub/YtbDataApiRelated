@@ -13,7 +13,7 @@ import requests
 import traceback
 
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
-from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC
+from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, dynamic_db_url_template, spotify_db, ytb_playlist_db
 logger = get_task_logger((__name__))
 
 
@@ -246,3 +246,5 @@ def check_queued_list(self, item_id_list):
         logger.info('status sent from check_queued_list {}'.format(status_dict))
         time.sleep(30)
     return {"status_dict": status_dict, "status": "SUCCESS"}
+
+
