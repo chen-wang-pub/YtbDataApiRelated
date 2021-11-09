@@ -5,6 +5,7 @@ import traceback
 from app.tasks import download_video, check_queued_list
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
 from app.const import update_url, read_url, write_url, delete_url
+from app import celery
 bp = Blueprint("all", __name__)
 
 @bp.route("/")
@@ -66,7 +67,7 @@ def queue_all():
 @bp.route("/retrievetask/<uuid>")
 def retrieve_task(uuid):
     current_app.logger.info('uuid from route is {}'.format(uuid))
-    task_result = check_queued_list.AsyncResult(uuid)
+    task_result = celery.AsyncResult(uuid)
     if task_result:
         return Response(response=json.dumps({"task_result":task_result.info }),
                         status=200,

@@ -4,6 +4,8 @@ from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app.models import User
 from app.factory import db
+from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list
+
 paid_user = Blueprint("paid_user", __name__)
 
 
@@ -91,3 +93,11 @@ def processdownload():
         return jsonify({"text": to_return})
     else:
         return jsonify({"error": form.errors})
+
+
+@paid_user.route('/test')
+def test_celery_task():
+    chain = (extract_spotify_playlist.s('0dRizWkhzplGjqvULihR72') | search_for_ytb_items_from_spotify_list.s()).apply_async()
+    return Response(response=json.dumps({"uuid": chain.id}),
+                    status=200,
+                    mimetype='application/json')

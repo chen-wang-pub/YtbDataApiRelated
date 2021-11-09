@@ -1,6 +1,6 @@
 from os.path import join, dirname
 db_info_dict = {
-                'db_url': '172.17.0.3',
+                'db_url': '172.17.0.4',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'
@@ -46,6 +46,14 @@ dynamic_db_url_template = {
                                                                                      '{}',
                                                                                      '{}')
 }
+
+def generate_db_access_obj(db_name, collection_name):
+    new_db_access_obj = dynamic_db_url_template.copy()
+    new_db_access_obj['read'] = new_db_access_obj['read'].format(db_name, collection_name)
+    new_db_access_obj['delete'] = new_db_access_obj['delete'].format(db_name, collection_name)
+    new_db_access_obj['update'] = new_db_access_obj['update'].format(db_name, collection_name)
+    new_db_access_obj['write'] = new_db_access_obj['write'].format(db_name, collection_name)
+    return new_db_access_obj
 
 spotify_db = 'spotify_playlist'
 

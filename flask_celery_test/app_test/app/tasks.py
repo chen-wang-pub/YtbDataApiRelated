@@ -1,3 +1,5 @@
+import math
+import re
 import shutil
 
 from app import celery
@@ -6,6 +8,7 @@ from celery.utils.log import get_task_logger
 import os
 import subprocess
 import json
+from lxml import html
 from celery.schedules import crontab
 
 import time
@@ -13,7 +16,8 @@ import requests
 import traceback
 
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
-from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, dynamic_db_url_template, spotify_db, ytb_playlist_db
+from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, generate_db_access_obj, spotify_db, ytb_playlist_db
+from app.utils.celery_task_utils import get_song_info
 logger = get_task_logger((__name__))
 
 
@@ -248,3 +252,56 @@ def check_queued_list(self, item_id_list):
     return {"status_dict": status_dict, "status": "SUCCESS"}
 
 
+@celery.task
+def extract_spotify_playlist(playlist_id):
+    """
+    This function takes the spotify playlist id as argument.
+    It will first try simulate a get request with headers to the playlist url to get access_token.
+    Then it will use the spotify api, the access_token on a utility function to get all song's info from the list
+    It returns 1) a dict obj contains the populated db access dict 2) a list of dict obj of all songs info
+    """
+    spotify_url = 'https://open.spotify.com/playlist/{}'.format(playlist_id)
+    api_prefix = 'https://api.spotify.com/v1/playlists'
+    database_name = 'spotify_playlist'
+    collection_name = playlist_id
+    headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"}
+    response = requests.get(spotify_url, headers=headers, timeout=10)
+    html_content = html.fromstring(response.content)
+    playlist_name = html_content.findtext('.//title')
+
+    logger.info("Spotify playlist title is {}".format(playlist_name))
+
+    access_token_obj_str = html_content.xpath('//*[@id="config"]/text()')[0]
+    access_token_obj = json.loads(access_token_obj_str)
+    access_token = access_token_obj['accessToken']
+    headers['Authorization'] = 'Bearer {}'.format(access_token)
+
+    logger.debug("The access token for {} is {}".format(playlist_id, access_token))
+
+
+    total_songs = html_content.xpath("//meta[@property='music:song_count']/@content")[0]
+    logger.debug('total {} songs in the list {}'.format(total_songs, playlist_id))
+    total_request = math.ceil(int(total_songs) / 100)
+    logger.debug(total_request)
+    list_suffix = html_content.xpath("//meta[@property='og:url']/@content")[0].split('/')[-1]
+    logger.debug('song list url suffix: {}'.format(list_suffix))
+    api_url = '{}/{}'.format(api_prefix, list_suffix)
+    logger.debug('api url for the playlist {} is {}'.format(playlist_id, api_url))
+
+
+    spotify_song_docs = get_song_info(api_url, headers, is_first_page=True)
+
+    logger.debug(len(spotify_song_docs))
+
+    playlist_db_access = generate_db_access_obj(spotify_db, collection_name)
+
+    return {'playlist_db_access': playlist_db_access, 'spotify_song_docs': spotify_song_docs}
+
+
+@celery.task
+def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
+    logger.debug('placeholder task, argument is {}'.format(dbaccess_songinfo_dict))
+
+    time.sleep(30)
+
+    return ['A8RCCDzykHU', 'iUEhr8GE6Bo', 'NZc__Hhi4L8', 'kKqsV3t94PY']
