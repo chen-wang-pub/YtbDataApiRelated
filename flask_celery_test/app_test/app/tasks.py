@@ -15,9 +15,15 @@ import time
 import requests
 import traceback
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
-from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, generate_db_access_obj, spotify_db, ytb_playlist_db
-from app.utils.celery_task_utils import get_song_info
+from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, generate_db_access_obj, spotify_db, ytb_playlist_db, command_executor
+from app.utils.celery_task_utils import get_song_info, generate_ytb_item_doc
 logger = get_task_logger((__name__))
 
 
@@ -262,7 +268,7 @@ def extract_spotify_playlist(playlist_id):
     """
     spotify_url = 'https://open.spotify.com/playlist/{}'.format(playlist_id)
     api_prefix = 'https://api.spotify.com/v1/playlists'
-    database_name = 'spotify_playlist'
+    #database_name = 'spotify_playlist'
     collection_name = playlist_id
     headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"}
     response = requests.get(spotify_url, headers=headers, timeout=10)
@@ -305,3 +311,67 @@ def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
     time.sleep(30)
 
     return ['A8RCCDzykHU', 'iUEhr8GE6Bo', 'NZc__Hhi4L8', 'kKqsV3t94PY']
+
+
+@celery.task
+def extract_ytb_channel_videos(channel_id):
+    channel_videos_url = "https://www.youtube.com/channel/{}/videos".format(channel_id)
+    col_name = ''
+    logger.info('The url of the youtube channel is {}'.format(channel_videos_url))
+    driver = webdriver.Remote(command_executor, desired_capabilities=DesiredCapabilities.FIREFOX)
+    driver.get(channel_videos_url)
+
+    item_xpath = '//*[@id="video-title"]'
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, item_xpath)))
+    total_music = len(driver.find_elements_by_xpath(item_xpath))
+    flag = False
+    while not flag:
+        driver.execute_script(
+            "window.scrollBy(0,document.body.scrollHeight || document.documentElement.scrollHeight)")
+
+        max_wait = 30
+        while max_wait > 0:
+            time.sleep(0.5)
+            temp_total = len(driver.find_elements_by_xpath(item_xpath))
+            if temp_total != total_music:
+                total_music = temp_total
+                break
+            # height = driver.execute_script("return document.body.scrollHeight")
+            # print('current scroll height is {}'.format(height))
+
+            max_wait -= 1
+        if max_wait == 0:
+            flag = True
+    # print(driver.page_source)
+
+    logger.debug(total_music)
+    playlist_owner = driver.find_element_by_xpath('//*[@id="text-container"]/*[@id="text"]').text
+    if not col_name:
+        col_name = playlist_owner
+    logger.debug(playlist_owner)
+    all_link = driver.find_elements_by_xpath('//div[@id="dismissible"]')
+    logger.debug(len(all_link))
+    ytb_doc_list = []
+    for a_link in all_link:
+        # print(a_link.get_attribute('innerHTML'))
+        title = a_link.find_element_by_xpath('.//*[@id="video-title"]').get_attribute('title')
+        href = a_link.find_element_by_xpath('.//*[@id="video-title"]').get_attribute('href')
+        duration = a_link.find_element_by_xpath('.//span[@id="text"]').text
+        view = a_link.find_element_by_xpath('.//*[@id="metadata-line"]/span[1]').text
+        ytb_item_doc = generate_ytb_item_doc(href, title, duration, view)
+        logger.debug(ytb_item_doc)
+        ytb_doc_list.append(ytb_item_doc)
+    driver.quit()
+
+    ytb_channel_db_access_dict = generate_db_access_obj(ytb_playlist_db, col_name)
+
+    logger.debug('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
+
+    item_id_list = []
+    number_added_doc = 0
+    for doc in ytb_doc_list:
+        item_id_list.append(doc['item_id'])
+        read_payload = {'read_filter': {'item_id': doc['item_id']}}
+        if upload_if_not_exist(doc, read_payload, ytb_channel_db_access_dict['read'], ytb_channel_db_access_dict['write']):
+            number_added_doc += 1
+    return {'ytb_channel_db_access_dict': ytb_channel_db_access_dict, 'item_id_list': item_id_list}

@@ -1,11 +1,14 @@
-from flask import Blueprint, request, current_app, Response, json, render_template, flash, redirect, url_for, jsonify
+import requests
+import os
+from flask import Blueprint, request, current_app, Response, json, render_template, flash, redirect, url_for, jsonify, send_file, after_this_request
 from app.forms import LoginForm, RegistrationForm, DownloadRequestForm
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app.models import User
 from app.factory import db
-from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list
-
+from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list, extract_ytb_channel_videos
+from app.const import update_url, read_url, write_url, delete_url, TEMP_DIR_LOC
+from app.utils.db_document_related import refresh_status
 paid_user = Blueprint("paid_user", __name__)
 
 
@@ -95,9 +98,79 @@ def processdownload():
         return jsonify({"error": form.errors})
 
 
-@paid_user.route('/test')
-def test_celery_task():
-    chain = (extract_spotify_playlist.s('0dRizWkhzplGjqvULihR72') | search_for_ytb_items_from_spotify_list.s()).apply_async()
+@paid_user.route('/spotify_list')
+def spotify_playlist():
+    spotify_playlist_id = request.args.get('id', default='0dRizWkhzplGjqvULihR72', type=str)
+    chain = (extract_spotify_playlist.s(spotify_playlist_id) | search_for_ytb_items_from_spotify_list.s()).apply_async()
     return Response(response=json.dumps({"uuid": chain.id}),
+                    status=200,
+                    mimetype='application/json')
+
+
+@paid_user.route('/ytb_channel')
+def ytb_channel_videos():
+    ytb_channel_id = request.args.get('id', default='/UCTjkEBD5wXS6VkmmjnLIFcg', type=str)
+    task = extract_ytb_channel_videos.apply_async(args=[ytb_channel_id])
+    return Response(response=json.dumps({"uuid": task.id}),
+                    status=200,
+                    mimetype='application/json')
+
+
+@paid_user.route('/retrieve_file/<item_id>')
+def retrieve_file(item_id):
+    current_app.logger.info('uuid from route is {}'.format(item_id))
+
+    read_payload = {'read_filter': {'item_id': item_id}}
+    response = requests.post(url=read_url, data=json.dumps(read_payload),
+                                         headers={'content-type': 'application/json'})
+    doc_list = response.json()['response']
+    if len(doc_list) < 1:
+        return Response(response=json.dumps({"error": "No record found for {}".format(item_id)}),
+                        status=200,
+                        mimetype='application/json')
+    doc = doc_list[0]
+
+    if doc['status'] == 'error':
+        return Response(response=json.dumps({"error": "Please queue request for {} again".format(item_id)}),
+                        status=200,
+                        mimetype='application/json')
+    elif doc['status'] == 'queued':
+        return Response(response=json.dumps({"error": "Please try download {} later".format(item_id)}),
+                        status=200,
+                        mimetype='application/json')
+    elif doc['status'] == 'downloading':
+        return Response(response=json.dumps({"error": "Please try download {} later".format(item_id)}),
+                        status=200,
+                        mimetype='application/json')
+    elif doc['status'] == 'ready':
+        file_name = '{}.mp3'.format(doc['title'])
+        item_dir = os.path.join(TEMP_DIR_LOC, item_id)
+        item_path = os.path.join(item_dir, file_name)
+        if os.path.isfile(item_path):
+            refresh_status(read_payload, read_url, update_url)  # Refresh the timer so that it extends the total time whenever someone queued it
+            """data = {'update_filter': {'item_id': item_id},
+                    'update_aggregation': [{'$set': {'status': 'transferring'}}]}
+            response = requests.put(url=update_url, data=json.dumps(data),
+                                    headers={'content-type': 'application/json'})
+            response_dict = json.loads(response.content)
+            current_app.logger.debug('update status is {} for item {} when transferring'.format(
+                response_dict['update_status'], item_id))"""
+            response = send_file(item_path, as_attachment=True, download_name=file_name)
+            @after_this_request
+            def add_close_action(response):
+                current_app.logger.info('Item {} transferred successfully'.format(item_id))
+                """data = {'update_filter': {'item_id': item_id},
+                            'update_aggregation': [{'$set': {'status': 'ready'}}]}
+                requests.put(url=update_url, data=json.dumps(data),
+                                            headers={'content-type': 'application/json'})"""
+                return response
+
+            return response
+        else:
+            current_app.logger.error('file not found for {} when transferring item'.format(item_id))
+            return Response(response=json.dumps({"error": "file not found for {} when transferring item".format(item_id)}),
+                            status=200,
+                            mimetype='application/json')
+    return Response(response=json.dumps({"error": "Unknow error when processing request for {}".format(item_id)}),
                     status=200,
                     mimetype='application/json')

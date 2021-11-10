@@ -58,3 +58,5 @@ def generate_db_access_obj(db_name, collection_name):
 spotify_db = 'spotify_playlist'
 
 ytb_playlist_db = 'ytb_playlist_from_selenium'
+
+command_executor = 'http://localhost:4444/wd/hub'
