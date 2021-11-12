@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% for item in item_list %}
+<li>{{item[1]}} | {{item[0]}} | <a href="{{ url_for('paid_user.retrieve_file', item_id=item[0]) }}">download</a></li>
+{% endfor %}
+{% if uuid is defined %}
+<a href="{{ url_for('all.retrieve_task', uuid=uuid) }}">refresh</a>
+{% endif %}
+
+{% endblock %}

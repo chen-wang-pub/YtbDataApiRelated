@@ -237,6 +237,7 @@ def check_queued_list(self, item_id_list):
         celery_task = download_video.delay(ytb_id)
         celery_task_id_list.append(celery_task.task_id)"""
     status_dict = {}
+    status_list = []
     while len(item_id_list) > 0:
         for i in range(len(item_id_list)-1, -1, -1):
             read_payload = {'read_filter': {'item_id': item_id_list[i]}}
@@ -246,16 +247,22 @@ def check_queued_list(self, item_id_list):
             if len(doc_list) != 1:
                 logger.error('sth went wrong in check_queued_list for item {}'.format(item_id_list[i]))
                 logger.error(traceback.format_exc())
-                return {"status_dict": status_dict, "status": "ERROR"}
-            if doc_list[0]['status'] == 'ready' or doc_list[0]['status'] == 'error':
+                return {"used_for_template_rendering": status_list, "status": "ERROR"}
+            if doc_list[0]['status'] == 'ready':
+                status_dict[item_id_list[i]] = doc_list[0]['title']
+                #status_list.append([item_id_list[i], doc_list[0]['title']])
+                del item_id_list[i]
+            elif doc_list[0]['status'] == 'error':
                 status_dict[item_id_list[i]] = doc_list[0]['status']
                 del item_id_list[i]
             else:
                 status_dict[item_id_list[i]] = doc_list[0]['status']
-        self.update_state(state='PROGRESS', meta={"status_dict": status_dict, "status": "PROGRESS"})
-        logger.info('status sent from check_queued_list {}'.format(status_dict))
+                #status_list.append([item_id_list[i], doc_list[0]['status']])
+            status_list = [[k, v] for k, v in status_dict.items()]
+        self.update_state(state='PROGRESS', meta={"used_for_template_rendering": status_list, "status": "PROGRESS"})
+        logger.info('status sent from check_queued_list {}'.format(status_list))
         time.sleep(30)
-    return {"status_dict": status_dict, "status": "SUCCESS"}
+    return {"used_for_template_rendering": status_list, "status": "SUCCESS"}
 
 
 @celery.task
@@ -310,7 +317,7 @@ def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
 
     time.sleep(30)
 
-    return ['A8RCCDzykHU', 'iUEhr8GE6Bo', 'NZc__Hhi4L8', 'kKqsV3t94PY']
+    return {'used_for_template_rendering': [['A8RCCDzykHU', 'placeholder0'], ['iUEhr8GE6Bo', 'placeholder1'], ['NZc__Hhi4L8', 'placeholder2'], ['kKqsV3t94PY', 'placeholder3']]}
 
 
 @celery.task
@@ -368,10 +375,12 @@ def extract_ytb_channel_videos(channel_id):
     logger.debug('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
 
     item_id_list = []
+    used_for_template_rendering = []
     number_added_doc = 0
     for doc in ytb_doc_list:
         item_id_list.append(doc['item_id'])
         read_payload = {'read_filter': {'item_id': doc['item_id']}}
+        used_for_template_rendering.append([doc['item_id'], doc['title']])
         if upload_if_not_exist(doc, read_payload, ytb_channel_db_access_dict['read'], ytb_channel_db_access_dict['write']):
             number_added_doc += 1
-    return {'ytb_channel_db_access_dict': ytb_channel_db_access_dict, 'item_id_list': item_id_list}
+    return {'ytb_channel_db_access_dict': ytb_channel_db_access_dict, 'item_id_list': item_id_list, 'used_for_template_rendering': used_for_template_rendering}

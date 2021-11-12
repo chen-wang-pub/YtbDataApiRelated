@@ -1,5 +1,5 @@
 import time
-from flask import Blueprint, request, current_app, Response, json
+from flask import Blueprint, request, current_app, Response, json, render_template
 import os
 import traceback
 from app.tasks import download_video, check_queued_list
@@ -69,10 +69,14 @@ def retrieve_task(uuid):
     current_app.logger.info('uuid from route is {}'.format(uuid))
     task_result = celery.AsyncResult(uuid)
     if task_result:
-        return Response(response=json.dumps({"task_result":task_result.info }),
+        if task_result.info is not None:
+            current_app.logger.info(task_result.info)
+            return render_template('test.html', item_list=task_result.info['used_for_template_rendering'], uuid=uuid)
+        """return Response(response=json.dumps({"task_result":task_result.info }),
                         status=200,
                         mimetype='application/json')
     else:
         return Response(response=json.dumps({"error": "invalid uuid"}),
                         status=200,
-                        mimetype='application/json')
+                        mimetype='application/json')"""
+    return render_template('test.html',  uuid=uuid)
