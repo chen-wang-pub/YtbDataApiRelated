@@ -6,7 +6,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app.models import User
 from app.factory import db
-from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list, extract_ytb_channel_videos
+from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list, extract_ytb_channel_videos, check_queued_list, extracted_data_processor
 from app.const import update_url, read_url, write_url, delete_url, TEMP_DIR_LOC
 from app.utils.db_document_related import refresh_status
 paid_user = Blueprint("paid_user", __name__)
@@ -110,7 +110,7 @@ def spotify_playlist():
 @paid_user.route('/ytb_channel')
 def ytb_channel_videos():
     ytb_channel_id = request.args.get('id', default='/UCTjkEBD5wXS6VkmmjnLIFcg', type=str)
-    task = extract_ytb_channel_videos.apply_async(args=[ytb_channel_id])
+    task = (extract_ytb_channel_videos.s(ytb_channel_id) | extracted_data_processor.s() | check_queued_list.s()).apply_async()#extract_ytb_channel_videos.apply_async(args=[ytb_channel_id])
     return Response(response=json.dumps({"uuid": task.id}),
                     status=200,
                     mimetype='application/json')

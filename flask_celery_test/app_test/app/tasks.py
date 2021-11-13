@@ -89,10 +89,11 @@ def download_video(ytb_id, download_dir):
     download_url = '{}{}'.format(ytb_base_url, ytb_id)
     try:
         yt = YouTube(download_url, on_complete_callback=on_complete)
+        cleaned_filename = yt.title.replace('/','')
         all_stream = yt.streams.filter(only_audio=True)
         best_quality = all_stream[-1]  # last in list
         stream = yt.streams.get_by_itag(best_quality.itag)
-        stream.download(output_path=download_dir, filename=yt.title)
+        stream.download(output_path=download_dir, filename=cleaned_filename)
     except:
         logger.error(traceback.format_exc())
         logger.error('download for ytb item {} failed'.format(ytb_id))
@@ -109,7 +110,7 @@ def download_video(ytb_id, download_dir):
 
     data = {'update_filter': {'item_id': ytb_id},
             'update_aggregation': [
-                {'$set': {'status': 'ready', 'ready_time': time.time(), 'title': yt.title}}]}
+                {'$set': {'status': 'ready', 'ready_time': time.time(), 'title': cleaned_filename}}]}
     response = requests.put(url=update_url, data=json.dumps(data),
                             headers={'content-type': 'application/json'})
     response_dict = json.loads(response.content)
@@ -323,7 +324,7 @@ def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
 @celery.task
 def extract_ytb_channel_videos(channel_id):
     channel_videos_url = "https://www.youtube.com/channel/{}/videos".format(channel_id)
-    col_name = ''
+
     logger.info('The url of the youtube channel is {}'.format(channel_videos_url))
     driver = webdriver.Remote(command_executor, desired_capabilities=DesiredCapabilities.FIREFOX)
     driver.get(channel_videos_url)
@@ -353,8 +354,6 @@ def extract_ytb_channel_videos(channel_id):
 
     logger.debug(total_music)
     playlist_owner = driver.find_element_by_xpath('//*[@id="text-container"]/*[@id="text"]').text
-    if not col_name:
-        col_name = playlist_owner
     logger.debug(playlist_owner)
     all_link = driver.find_elements_by_xpath('//div[@id="dismissible"]')
     logger.debug(len(all_link))
@@ -370,7 +369,7 @@ def extract_ytb_channel_videos(channel_id):
         ytb_doc_list.append(ytb_item_doc)
     driver.quit()
 
-    ytb_channel_db_access_dict = generate_db_access_obj(ytb_playlist_db, col_name)
+    ytb_channel_db_access_dict = generate_db_access_obj(ytb_playlist_db, channel_id)
 
     logger.debug('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
 
@@ -384,3 +383,20 @@ def extract_ytb_channel_videos(channel_id):
         if upload_if_not_exist(doc, read_payload, ytb_channel_db_access_dict['read'], ytb_channel_db_access_dict['write']):
             number_added_doc += 1
     return {'ytb_channel_db_access_dict': ytb_channel_db_access_dict, 'item_id_list': item_id_list, 'used_for_template_rendering': used_for_template_rendering}
+
+
+@celery.task
+def extracted_data_processor(result_dict):
+    assert 'item_id_list' in result_dict
+    for video_id in result_dict['item_id_list']:
+
+        doc = generate_doc(video_id)
+        read_payload = {'read_filter': {'item_id': video_id}}
+        try:
+            if not upload_if_not_exist(doc, read_payload, read_url, write_url):
+                refresh_status(read_payload, read_url, update_url)
+        except:
+            logger.error(traceback.format_exc())
+        logger.info('{} wrote to db'.format(video_id))
+        logger.info('{} is queued for downloading'.format(video_id))
+    return result_dict['item_id_list']
