@@ -1,5 +1,6 @@
-from pymongo import MongoClient, ASCENDING, DESCENDING
-from pymongo.errors import BulkWriteError
+import pymongo.errors
+from pymongo import MongoClient, ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK, GEOSPHERE, HASHED, TEXT
+from pymongo.errors import BulkWriteError, OperationFailure
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -11,7 +12,7 @@ logging.basicConfig(level=logging.DEBUG)
     'col_name': 'YtbSearchRecord',
 }"""
 api_search_record_db_dict = {
-    'db_url': '172.17.0.3',
+    'db_url': '172.17.0.4',
     'db_port': 27017,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',
@@ -150,6 +151,45 @@ class YtbSearchRecordDBAPI_V0:
         else:
             return False
 
+
+    def createIndex(self):
+        index_pairs, index_kwargs = self._process_index_arguments(self.payload['index_pairs'], self.payload['index_kwargs'])
+        try:
+            response = self.collection.create_index(index_pairs, **index_kwargs)
+        except OperationFailure as of:
+            logging.error("error when creating index with pairs {} and kwargs {}".format(index_pairs, index_kwargs))
+            logging.error("error details: {}".format(of.details))
+            return False
+        logging.debug('Response from create index operation. names: {}'.format(response))
+        return True
+
+
+    def _process_index_arguments(self, index_pairs, index_kwargs):
+        index_related_dict = {
+            'ASCENDING': ASCENDING,
+            'DESCENDING': DESCENDING,
+            'GEO2D': GEO2D,
+            'GEOHAYSTACK': GEOHAYSTACK,
+            'GEOSPHERE': GEOSPHERE,
+            'HASHED': HASHED,
+            'TEXT': TEXT,
+            'True': True,
+            'False': False
+        }
+        processed_pairs = []
+        processed_kwargs = {}
+        for pair in index_pairs:
+            new_pair = (pair[0], index_related_dict[pair[1]])
+            processed_pairs.append(new_pair)
+        for key in index_kwargs:
+            if index_kwargs[key] in index_related_dict:
+                processed_kwargs[key] = index_related_dict[key]
+            else:
+                processed_kwargs[key] = index_kwargs[key]
+        return processed_pairs, processed_kwargs
+
+
+
 if __name__ == '__main__':
     payload = {
         'write_docs': [{'query_string': ['test0','test1','test4'], 'etag': 'e12340', 'kind':'video', 'item_id':'1121210'},
@@ -160,9 +200,14 @@ if __name__ == '__main__':
         'read_projection': {'item_id': 1},
         'update_filter': {'kind': {'$in': ['channel', 'playlist']}},
         'update_aggregation': [{'$set': {'kind': 'not video'}}],
-        'delete_filter': {'etag': 'e12342'}
+        'delete_filter': {'etag': 'e12342'},
+        'index_pairs': [('etag', 'ASCENDING')],
+        'index_kwargs': {"unique": True}
     }
-
+    logging.info('testing create index')
+    db_obj = YtbSearchRecordDBAPI_V0(payload)
+    db_obj.createIndex()
+    input('pause teset')
     logging.info('testing basic write')
     clean_up = YtbSearchRecordDBAPI_V0({'delete_filter':{}})
     clean_up.delete()

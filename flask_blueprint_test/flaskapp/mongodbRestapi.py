@@ -159,3 +159,34 @@ def ytb_record_db_api_delete(db_url, db_port, db_name, col_name):
     return Response(response=json.dumps({'delete_status': delete_status}),
                     status=200,
                     mimetype='application/json')
+
+
+@mongodbrestapi.route('/ytbrecordapi/v0/createindex', methods=['POST'])
+def ytb_record_db_api_delete_legacy():
+    data = request.json
+    if not data:
+        return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                        status=400,
+                        mimetype='application/json')
+    db_obj = YtbSearchRecordDBAPI_V0(data)
+    process_status = db_obj.createIndex()
+    return Response(response=json.dumps({'delete_status': process_status}),
+                    status=200,
+                    mimetype='application/json')
+
+
+@mongodbrestapi.route('/ytbrecordapi/v0/<string:db_url>/<int:db_port>/<string:db_name>/<string:col_name>/createindex',
+                      methods=['POST'])
+def ytb_record_db_api_delete(db_url, db_port, db_name, col_name):
+    data = request.json
+    if not data:
+        return Response(response=json.dumps({"Error": "Please provide connection information"}),
+                        status=400,
+                        mimetype='application/json')
+    verify_db_access(db_url, db_port, db_name, col_name)
+
+    db_obj = YtbSearchRecordDBAPI_V0(data, db_url=db_url, db_port=db_port, db_name=db_name, col_name=col_name)
+    process_status = db_obj.createIndex()
+    return Response(response=json.dumps({'delete_status': process_status}),
+                    status=200,
+                    mimetype='application/json')
