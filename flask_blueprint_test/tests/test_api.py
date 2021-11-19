@@ -19,10 +19,12 @@ if __name__ == '__main__':
         'read_projection': {'item_id': 1},
         'update_filter': {'kind': {'$in': ['channel', 'playlist']}},
         'update_aggregation': [{'$set': {'kind': 'not video'}}],
-        'delete_filter': {'etag': 'e12342'}
+        'delete_filter': {'etag': 'e12342'},
+        'index_pairs': [('etag', 'ASCENDING')],
+        'index_kwargs': {"unique": True}
     }
 
-    logging.info('testing basic write')
+    """logging.info('testing basic write')
     clean_up = YtbSearchRecordDBAPI_V0({'delete_filter':{}})
     clean_up.delete()
 
@@ -47,10 +49,14 @@ if __name__ == '__main__':
     db_obj.delete()
     db_obj.payload['read_filter'] = {}
     db_obj.payload['read_projection'] = {}
-    logging.debug(db_obj.read())
+    logging.debug(db_obj.read())"""
 
 
     base_url = 'http://localhost:5001/ytbrecordapi/v0/{}'
+    logging.info('testing create index')
+    response = requests.post(url=base_url.format('createindex'), data=json.dumps(payload),headers={'content-type': 'application/json'})
+    logging.debug(response.content)
+
     logging.info('testing restapi readall')
     response = requests.get(url=base_url.format('readall'), headers={'content-type': 'application/json'})
     logging.debug(response.content)
@@ -59,8 +65,9 @@ if __name__ == '__main__':
     data = {'read_filter': {}}
 
     response = requests.post(url=base_url.format('read'), data=json.dumps(data), headers={'content-type': 'application/json'})
-    logging.debug(response.content)
-
+    logging.debug('no output')
+    logging.debug(json.loads(response.content.decode('UTF-8')))
+    input('pause teset')
     logging.info('testing restapi delete')
     data = {'delete_filter':{}}
 

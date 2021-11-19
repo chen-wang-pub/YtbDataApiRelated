@@ -23,6 +23,11 @@ write_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_
                                                                              db_info_dict['db_port'],
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
+
+createindex_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/createindex'.format(db_info_dict['db_url'],
+                                                                             db_info_dict['db_port'],
+                                                                             db_info_dict['db_name'],
+                                                                             db_info_dict['col_name'])
 MAX_TIMEOUT = 2400
 
 TEMP_DIR_LOC = join(dirname(__file__), 'temp_storage')
@@ -42,6 +47,10 @@ dynamic_db_url_template = {
                                                                                         '{}',
                                                                                         '{}'),
     'write':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/write'.format(db_info_dict['db_url'],
+                                                                             db_info_dict['db_port'],
+                                                                                     '{}',
+                                                                                     '{}'),
+    'createindex':'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/createindex'.format(db_info_dict['db_url'],
                                                                              db_info_dict['db_port'],
                                                                                      '{}',
                                                                                      '{}')
