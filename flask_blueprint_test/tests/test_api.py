@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
 
     base_url = 'http://localhost:5001/ytbrecordapi/v0/{}'
-    logging.info('testing create index')
+    """logging.info('testing create index')
     response = requests.post(url=base_url.format('createindex'), data=json.dumps(payload),headers={'content-type': 'application/json'})
     logging.debug(response.content)
 
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     response = requests.delete(url=base_url.format('delete'), data=json.dumps(data), headers={'content-type': 'application/json'})
     logging.debug(response.content)
-    logging.debug(db_obj.read())
+    logging.debug(db_obj.read())"""
 
     logging.info('testing restapi write')
     data = {'write_docs': [{'query_string': ['test0','test1','test4'], 'etag': 'e12340', 'kind':'video', 'item_id':'1121210'},
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     response = requests.post(url=base_url.format('write'), data=json.dumps(data), headers={'content-type': 'application/json'})
     logging.debug(response.content)
-    logging.debug(db_obj.read())
+    """logging.debug(db_obj.read())
 
     logging.info('testing restapi update')
 
@@ -91,6 +91,6 @@ if __name__ == '__main__':
             'update_aggregation': [{'$set': {'kind': 'not video'}}]}
     response = requests.put(url=base_url.format('update'), data=json.dumps(data), headers={'content-type': 'application/json'})
     logging.debug(response.content)
-    logging.debug(db_obj.read())
+    logging.debug(db_obj.read())"""
 
 

@@ -1,4 +1,3 @@
-from pymongo import MongoClient, DESCENDING
 from pymongo.errors import DuplicateKeyError
 import requests
 import json
@@ -94,8 +93,9 @@ class YoutubeDataApiCaller:
     _ytbApiUrlTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
     _error_msg_identifier_dict = {'QUOTA_EXCEEDED': 'you have exceeded your',}
 
-    def __init__(self, db_name='YtbDataApiSearched', col_name='YtbSearchRecord', number_of_keys=3):
+    def __init__(self, db_name='YtbDataApiSearched', col_name='YtbSearchRecord', keypool_db='KeyPool', keypool_col='YoutubeDataApi', number_of_keys=3):
         self.db_dict = generate_db_access_obj(db_name, col_name)
+        self.keypool_db_dict = generate_db_access_obj(keypool_db, keypool_col)
         self._max_key = number_of_keys
         #self._pull_api_key()
 
@@ -197,7 +197,14 @@ class YoutubeDataApiCaller:
             self._release_all_key()
 
     def _pull_api_key(self):
-        documents = self.col.find({'in_use': False, 'quota_exceeded': False, }, limit=self.max_key)
+        payload = {'read_filter': {'in_use': False, 'quota_exceeded': False, }
+        }
+        response = requests.post(url=self.keypool_db_dict['read'], data=json.dumps(payload),
+                                 headers={'content-type': 'application/json'})
+
+        documents = json.loads(response.content.decode('UTF-8'))['response']
+        if len(documents) > self.max_key:
+            documents = documents[:self.max_key]
         temp_keys = [a_doc['key'] for a_doc in documents]
         logging.debug('temp keys:{}'.format(temp_keys))
         logging.debug(list(documents))
@@ -230,15 +237,14 @@ class YoutubeDataApiCaller:
 
     def _update_key_status(self, docs_for_update):
         logging.debug(docs_for_update)
-        result = self.col.update_one({'key': docs_for_update['key']},
-               {"$set": {'in_use': docs_for_update['in_use'], 'quota_exceeded': docs_for_update['quota_exceeded'],
-                         'last_update_date': docs_for_update['last_update_date']}}
-               )
-
-        if result.modified_count == 1:
-            return True
-        else:
-            return False
+        payload = {'update_filter': {'key': docs_for_update['key']},
+                   'update_aggregation': [{"$set": {'in_use': docs_for_update['in_use'], 'quota_exceeded': docs_for_update['quota_exceeded'],
+                         'last_update_date': docs_for_update['last_update_date']}}],
+                   'update_options': {'upsert': True}}
+        response = requests.put(url=self.keypool_db_dict['update'], data=json.dumps(payload),
+                                headers={'content-type': 'application/json'})
+        logging.debug(response.content)
+        return json.loads(response.content.decode('UTF-8'))['update_status']
 
     @staticmethod
     def generate_document(key, in_use, quota_exceeded, last_update_date):
@@ -258,7 +264,7 @@ class YoutubeDataApiCaller:
         for key in self._available_keys:
             update_doc = self.generate_document(key, False, False, datetime.datetime.now())
             update_result = self._update_key_status(update_doc)
-            if update_result:
+            if not update_result:
                 failed_released_key.append(key)
         if failed_released_key:
             logging.error('error when releasing keys, total {} keys, the keys are {}'.format(
@@ -350,37 +356,37 @@ class YoutubeDataApiCaller:
         return doc_list
 
 
-def add_keys_to_db(api_keys, db_name, col_name):
-    db_client = MongoClient(db_url, db_port)
-    db = db_client[db_name]
-    col = db[col_name]
-    col.create_index([('key', DESCENDING)], unique=True)
+def add_keys_to_db(api_keys, db_name='KeyPool', col_name='YoutubeDataApi'):
+    db_dict = generate_db_access_obj(db_name, col_name)
+    payload = {'index_pairs': [('key', 'DESCENDING')],
+               'index_kwargs': {"unique": True}}
+    response = requests.post(url=db_dict['createindex'], data=json.dumps(payload),
+                             headers={'content-type': 'application/json'})
+    logging.debug(response.content)
 
     failed_keys = []
 
     for api_key in api_keys:
         doc_dict = YoutubeDataApiCaller.generate_document(api_key, False, False, datetime.datetime.now())
-        try:
-            col.insert_one(doc_dict)
-            logging.debug('record added')
-        except DuplicateKeyError:
-            logging.debug(('name already in database for {}'.format(doc_dict)))
-            failed_keys.append(api_key)
 
+        payload = {'write_docs': [doc_dict]}
+        response = requests.post(url=db_dict['write'], data=json.dumps(payload),
+                                headers={'content-type': 'application/json'})
+        logging.debug(response.content)
+        if not json.loads(response.content.decode('UTF-8'))['write_status']:
+            failed_keys.append(api_key)
     return failed_keys
 
 
-def update_db_keys_status(key_to_update, db_url, db_port, db_name, col_name):
-    db_client = MongoClient(db_url, db_port)
-    db = db_client[db_name]
-    col = db[col_name]
+def update_db_keys_status(key_to_update, db_name='KeyPool', col_name='YoutubeDataApi'):
+    db_dict = generate_db_access_obj(db_name, col_name)
+    payload = {'update_filter': {'key': key_to_update['key']},
+               'update_aggregation': [{"$set": {'in_use': key_to_update['in_use'], 'quota_exceeded': key_to_update['quota_exceeded'],
+                         'last_update_date': key_to_update['last_update_date']}}]}
+    response = requests.put(url=db_dict['update'], data=json.dumps(payload),
+                            headers={'content-type': 'application/json'})
 
-    result = col.update_one({'key': key_to_update['key']},
-               {"$set": {'in_use': key_to_update['in_use'], 'quota_exceeded': key_to_update['quota_exceeded'],
-                         'last_update_date': key_to_update['last_update_date']}}
-               )
-
-    if result.modified_count == 1:
+    if response.content == 1:
         return True
     else:
         return False
@@ -395,16 +401,16 @@ if __name__ == '__main__':
     for api in doc['YTB_API_POOL']:
         logging.debug(api)
         #db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
-    failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
+    failed_keys = add_keys_to_db(doc['YTB_API_POOL'], 'KeyPool', 'YoutubeDataApi')#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     if failed_keys:
         logging.debug(failed_keys)
 
-    test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
+    test = YoutubeDataApiCaller()#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
     logging.debug(a)
 
     respond = test.search_query('test4', check_existing=True)
     logging.debug(respond)
 
-    respond = test.search_query('Whats Going On Astro Nito Onna', check_existing=True)
+    respond = test.search_query('stay with me', check_existing=True)
     logging.debug(respond)
