@@ -90,7 +90,9 @@ class YoutubeDataApiCaller:
 
     """
     _available_keys = []
-    _ytbApiUrlTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
+    _ytbApiSearchTemplate = "https://youtube.googleapis.com/youtube/v3/search?q={}&key={}"
+    _ytbApiVideosTemplate = "https://www.googleapis.com/youtube/v3/videos?id={}&part=contentDetails,snippet,statistics&key={}"
+
     _error_msg_identifier_dict = {'QUOTA_EXCEEDED': 'you have exceeded your',}
 
     def __init__(self, db_name='YtbDataApiSearched', col_name='YtbSearchRecord', keypool_db='KeyPool', keypool_col='YoutubeDataApi', number_of_keys=3):
@@ -109,11 +111,11 @@ class YoutubeDataApiCaller:
 
     @property
     def ytb_api_url_template(self):
-        return self._ytbApiUrlTemplate
+        return self._ytbApiSearchTemplate
 
     @ytb_api_url_template.setter
     def ytb_api_url_template(self, url):
-        self._ytbApiUrlTemplate = url
+        self._ytbApiSearchTemplate = url
 
     @property
     def has_available_keys(self):
@@ -141,17 +143,33 @@ class YoutubeDataApiCaller:
     def _parse_ytb_api_response(self, api_reply_json, query_string):
         doc_list = []
         searched_items = api_reply_json['items']
+        item_id_list = []
         for item in searched_items:
-            etag = item['etag']
-            kind = item['id']['kind']
             if 'videoId' in item['id']:
                 item_id = item['id']['videoId']
             elif 'channelId':
                 item_id = item['id']['channelId']
             elif 'playlistId':
                 item_id = item['id']['playlistId']
-            record_doc = {'etag': etag, 'kind': kind, 'item_id': item_id, 'query_string': [query_string]}
-            doc_list.append(record_doc)
+            item_id_list.append(item_id)
+
+        query_arguments = ','.join(item_id_list)
+        try:
+            final_url = self._ytbApiVideosTemplate.format(query_arguments, self._available_keys[0])
+            payload = {}
+            headers = {}
+            response = requests.request("GET", final_url, headers=headers, data=payload)
+            ytb_result = json.loads(response.text)
+
+            error_obj = self._check_error(ytb_result)
+            if error_obj:
+                return self._retry_search(query_string, error_obj)
+
+        except requests.exceptions.RequestException:
+            logging.error('error in requests module when _parse_ytb_api_response')
+            return False
+        item_detail_list = ytb_result['items']
+        #TODO: finish this
         return doc_list
 
     def search_query(self, query_string, check_existing=False):
@@ -174,7 +192,7 @@ class YoutubeDataApiCaller:
         #   return result
 
         try:
-            final_url = self._ytbApiUrlTemplate.format(query_string, self._available_keys[0])
+            final_url = self._ytbApiSearchTemplate.format(query_string, self._available_keys[0])
             payload = {}
             headers = {}
             response = requests.request("GET", final_url, headers=headers, data=payload)
@@ -185,6 +203,7 @@ class YoutubeDataApiCaller:
                 return self._retry_search(query_string, error_obj)
 
             doc_list = self._parse_ytb_api_response(ytb_result, query_string)
+
             # TODO: Queue this method in a thread in background
             self.storeSearchResponse(doc_list)
 
