@@ -4,7 +4,7 @@ import json
 import datetime
 import logging
 from enum import Enum, unique
-
+import time
 
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
@@ -170,6 +170,13 @@ class YoutubeDataApiCaller:
             return False
         item_detail_list = ytb_result['items']
         #TODO: finish this
+        for item in item_detail_list:
+            doc = {'last_searched_time': time.time(), 'title': item['snippet']['title'], 'etag': item['etag'],
+                    'duration': item['contentDetails']['duration'], 'item_id': item['id'], 'kind': item['kind'],
+                   'view_count': item['statistics']['viewCount'], 'like_count': item['statistics']['likeCount'],
+                   'query_info': [{'query_string': query_string, 'relevance_rank': item_detail_list.index(item)}]}
+            doc_list.append(doc)
+            logging.info(doc)
         return doc_list
 
     def search_query(self, query_string, check_existing=False):
@@ -297,17 +304,10 @@ class YoutubeDataApiCaller:
         Expecting youtube data api response in json format as the example at the end of the file
 
         stored mongo db collection schema:
-        {
-            "query_string": ['xxx']
-                All query strings used for querying the youtube data api, it is an array of
-                        query_string historically used to get this result
-            "etag": 'xxx'
-                The item's etag that is used as the unique identifier used by youtube data api
-            "kind": 'xxx'
-                The item's kind field in the resopnse body
-            "item_id": 'xxx'
-                The video id or channel id of the item. It's the suffix of the youtube video
-        }
+        {'last_searched_time': time.time(), 'title': item['snippet']['title'], 'etag': item['etag'],
+                    'duration': item['contentDetails']['duration'], 'item_id': item['id'], 'kind': item['kind'],
+                   'view_count': item['statistics']['viewCount'], 'like_count': item['statistics']['likeCount'],
+                   'query_info': [{'query_string': query_string, 'relevance_rank': item_detail_list.index(item)}]}
 
         api example: https://youtube.googleapis.com/youtube/v3/search?q=xxxx&key=xxxx
         https://developers.google.com/youtube/v3/docs/search#resource
@@ -328,20 +328,20 @@ class YoutubeDataApiCaller:
             # TODO: need to rewrite the following part with the $addtoset updateone upsert, and add test to it
             # TODO: Add check that the insert succeeded and return the result
             # TODO: Add error handling and add testing
-            query_string = doc_record['query_string']
-            payload = {'read_filter': {'etag': doc_record['etag']}, 'read_projection': {'query_string': 1, '_id': 0}}
+            query_info = doc_record['query_info'][0]
+            payload = {'read_filter': {'etag': doc_record['etag']}, 'read_projection': {'query_info': 1, '_id': 0}}
             response = requests.post(url=self.db_dict['read'], data=json.dumps(payload),
                                      headers={'content-type': 'application/json'})
 
             doc = json.loads(response.content.decode('UTF-8'))['response']
             if doc:
-                current_queries = doc[0]['query_string']
-                if query_string not in current_queries:
-                    current_queries.append(query_string)
+                current_queries = doc[0]['query_info']
+                if query_info not in current_queries:
+                    current_queries.append(query_info)
             else:
-                current_queries = [query_string]
-            final_record = {'etag': doc_record['etag'],
-                            'kind': doc_record['kind'], 'item_id': doc_record['item_id'], 'query_string': current_queries}
+                current_queries = [query_info]
+            doc_record['query_info'] = current_queries
+            final_record = doc_record
 
             payload = {'update_filter': {"etag": doc_record['etag']}, 'update_aggregation': [{'$set': final_record}], 'update_options':{'upsert': True}}
             response = requests.put(url=self.db_dict['update'], data=json.dumps(payload),
@@ -361,18 +361,20 @@ class YoutubeDataApiCaller:
 
 
         doc_list = []
-        payload = {'read_filter': {'query_string': [query_string]}}
+        payload = {'read_filter': {'query_info.query_string': query_string}}
         response = requests.post(url=self.db_dict['read'], data=json.dumps(payload),
                                  headers={'content-type': 'application/json'})
 
         docs = json.loads(response.content.decode('UTF-8'))['response']
 
-
-        for document in docs:
+        logging.info('return from get_all_doc_contains_query_string')
+        logging.info(docs)
+        """for document in docs:
             doc = {'etag': document['etag'], 'kind': document['kind'], 'item_id': document['item_id'],
                    'query_string': [query_string]}
-            doc_list.append(doc)
-        return doc_list
+            doc_list.append(doc)"""
+        #return doc_list
+        return docs
 
 
 def add_keys_to_db(api_keys, db_name='KeyPool', col_name='YoutubeDataApi'):
