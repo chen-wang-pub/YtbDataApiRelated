@@ -1,0 +1,52 @@
+version: "3.5"
+services:
+  db-rest-api:
+    image: db-rest:latest
+
+    restart: always
+
+    ports:
+      - "5001:5001"
+
+    links:
+      - thismongo
+
+  thismongo:
+    image: mongo:latest
+
+    restart: always
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - ~/data:/data/db
+
+  some_rabbit:
+    image: rabbitmq:latest
+
+    restart: always
+
+    ports:
+      - "5672:5672"
+
+  selenium:
+    image: selenium/standalone-firefox:latest
+
+    restart: always
+
+    ports:
+      - "4444:4444"
+
+    shm_size: "2gb"
+
+  dis_redis:
+    image: redis:latest
+
+    restart: always
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - ~/redisdata:/data

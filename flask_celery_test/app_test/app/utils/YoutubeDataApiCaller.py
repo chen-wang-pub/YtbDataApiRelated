@@ -8,13 +8,13 @@ import time
 
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
-    'db_url': 'localhost',
+    'db_url': 'thismongo',
     'db_port': 27017,
     'db_name': 'KeyPool',
     'col_name': 'YoutubeDataApi',
 }
 db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': 'thismongo',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'
@@ -421,7 +421,7 @@ if __name__ == '__main__':
 
     for api in doc['YTB_API_POOL']:
         logging.debug(api)
-        #db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
+        db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
     failed_keys = add_keys_to_db(doc['YTB_API_POOL'], 'KeyPool', 'YoutubeDataApi')#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     if failed_keys:
         logging.debug(failed_keys)

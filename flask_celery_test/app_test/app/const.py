@@ -1,6 +1,6 @@
 from os.path import join, dirname
 db_info_dict = {
-                'db_url': '172.17.0.4',
+                'db_url': 'thismongo',
                 'db_port': '27017',
                 'db_name': 'ytb_temp_file',
                 'col_name': 'id_timestamp_status'

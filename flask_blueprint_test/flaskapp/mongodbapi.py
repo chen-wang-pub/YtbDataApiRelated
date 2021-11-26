@@ -5,18 +5,18 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-"""api_search_record_db_dict = {
-    'db_url': 'localhost',
-    'db_port': 27017,
-    'db_name': 'YtbDataApiSearched',
-    'col_name': 'YtbSearchRecord',
-}"""
 api_search_record_db_dict = {
-    'db_url': '172.17.0.4',
+    'db_url': 'thismongo',
     'db_port': 27017,
     'db_name': 'YtbDataApiSearched',
     'col_name': 'YtbSearchRecord',
 }
+"""api_search_record_db_dict = {
+    'db_url': 'thismongo',
+    'db_port': 27017,
+    'db_name': 'YtbDataApiSearched',
+    'col_name': 'YtbSearchRecord',
+}"""
 
 class YtbSearchRecordDBAPI_V0:
     """
@@ -27,7 +27,7 @@ class YtbSearchRecordDBAPI_V0:
     def __init__(self, payload, db_url=api_search_record_db_dict['db_url'],
                  db_port=api_search_record_db_dict['db_port'],
                  db_name='YtbDataApiSearched', col_name='YtbSearchRecord'):
-        client = MongoClient(db_url, db_port)
+        client = MongoClient("mongodb://{}:{}".format(db_url, db_port))
         db = client[db_name]
         self.collection = db[col_name]
         self._payload = payload
