@@ -5,7 +5,7 @@ import datetime
 import logging
 from enum import Enum, unique
 import time
-
+import isodate
 logging.basicConfig(level=logging.DEBUG)
 api_key_pool_dict = {
     'db_url': 'thismongo',
@@ -171,10 +171,17 @@ class YoutubeDataApiCaller:
         item_detail_list = ytb_result['items']
         #TODO: finish this
         for item in item_detail_list:
-            doc = {'last_searched_time': time.time(), 'title': item['snippet']['title'], 'etag': item['etag'],
+
+            if 'likeCount' in item['statistics']:
+                doc = {'last_searched_time': time.time(), 'title': item['snippet']['title'], 'etag': item['etag'],
                     'duration': item['contentDetails']['duration'], 'item_id': item['id'], 'kind': item['kind'],
                    'view_count': item['statistics']['viewCount'], 'like_count': item['statistics']['likeCount'],
                    'query_info': [{'query_string': query_string, 'relevance_rank': item_detail_list.index(item)}]}
+            else:
+                doc = {'last_searched_time': time.time(), 'title': item['snippet']['title'], 'etag': item['etag'],
+                       'duration': item['contentDetails']['duration'], 'item_id': item['id'], 'kind': item['kind'],
+                       'view_count': item['statistics']['viewCount'], 'like_count': "0",
+                       'query_info': [{'query_string': query_string, 'relevance_rank': item_detail_list.index(item)}]}
             doc_list.append(doc)
             logging.info(doc)
         return doc_list
@@ -377,6 +384,35 @@ class YoutubeDataApiCaller:
         return docs
 
 
+    @staticmethod
+    def rank_documents(doc_list, duration_ms, threshold=20):
+        """
+        Expects a list of documents that is sorted by the rank of query string used for searching. The doc_list
+        should be the return of search_query
+        The duration_ms should be an int that represents the total duration of the song in spotify list
+        If the difference between the duration from the ytb data api result and the duration from spotify api
+        passes the threshold, then it moves to the next document in the list. Until all the documents have been
+        visited at least once, then just return the first document's id for download.
+
+
+        :param doc_list:
+        :param duration_ms:
+        :param threshold:
+        :return:
+        """
+        for doc in doc_list:
+            item_id = doc['item_id']
+            ytb_duration = doc['duration']
+            ytb_sec = isodate.parse_duration(ytb_duration)
+            spotify_sec = duration_ms/1000
+            if abs(ytb_sec - spotify_sec) <= threshold:
+                return item_id
+
+        logging.debug('All documents exceeded the threshold. Returning the first document.')
+
+        return doc_list[0]['item_id']
+
+
 def add_keys_to_db(api_keys, db_name='KeyPool', col_name='YoutubeDataApi'):
     db_dict = generate_db_access_obj(db_name, col_name)
     payload = {'index_pairs': [('key', 'DESCENDING')],
@@ -433,5 +469,5 @@ if __name__ == '__main__':
     respond = test.search_query('test4', check_existing=True)
     logging.debug(respond)
 
-    respond = test.search_query('stay with me', check_existing=True)
+    respond = test.search_query('48 hours', check_existing=True)
     logging.debug(respond)

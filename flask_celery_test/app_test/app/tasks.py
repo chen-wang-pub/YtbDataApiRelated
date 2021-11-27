@@ -24,6 +24,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from app.utils.db_document_related import upload_if_not_exist, generate_doc, refresh_status
 from app.const import update_url, read_url, write_url, delete_url, MAX_TIMEOUT, TEMP_DIR_LOC, generate_db_access_obj, spotify_db, ytb_playlist_db, command_executor
 from app.utils.celery_task_utils import get_song_info, generate_ytb_item_doc
+from app.utils.YoutubeDataApiCaller import YoutubeDataApiCaller
 logger = get_task_logger((__name__))
 
 
@@ -314,11 +315,21 @@ def extract_spotify_playlist(playlist_id):
 
 @celery.task
 def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
-    logger.debug('placeholder task, argument is {}'.format(dbaccess_songinfo_dict))
+    logger.info('placeholder task, argument is {}'.format(dbaccess_songinfo_dict))
+    result_list = []
+    ytb_api_caller = YoutubeDataApiCaller()
+    for doc in dbaccess_songinfo_dict['spotify_song_docs']:
+        for_query = "{} {}".format(doc['name'], ' '.join(doc['artists']))
+        duration_ms = doc['duration_ms']
+        try:
+            respond = ytb_api_caller.search_query(for_query, check_existing=True)
+            item_id = YoutubeDataApiCaller.rank_documents(respond, duration_ms)
+            result_list.append(item_id)
+        except Exception:
+            logger.error(traceback.format_exc())
+            return {'item_id_list': result_list}
 
-    time.sleep(30)
-
-    return {'used_for_template_rendering': [['A8RCCDzykHU', 'placeholder0'], ['iUEhr8GE6Bo', 'placeholder1'], ['NZc__Hhi4L8', 'placeholder2'], ['kKqsV3t94PY', 'placeholder3']]}
+    return {'item_id_list': result_list}
 
 
 @celery.task

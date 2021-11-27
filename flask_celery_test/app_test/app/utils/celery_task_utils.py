@@ -20,6 +20,7 @@ def generate_ytb_item_doc(video_url, video_title, video_duration, video_view):
 
 def get_song_info(source_url, header, is_first_page=False, proxy_dict={}):
     """
+    {'name': 'Foolish', 'duration_ms': 177626, 'album_name': 'Shang-Chi and The Legend of The Ten Rings: The Album', 'artists': ["Rich Brian", "Warren Hue", "Guapdad 4000"]}
     A recursive function that scrape the link till no next page. The final return is a list of dictionary obj of the
     song info document
     :param proxy_dict:
