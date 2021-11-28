@@ -101,7 +101,8 @@ def processdownload():
 @paid_user.route('/spotify_list')
 def spotify_playlist():
     spotify_playlist_id = request.args.get('id', default='0dRizWkhzplGjqvULihR72', type=str)
-    chain = (extract_spotify_playlist.s(spotify_playlist_id) | search_for_ytb_items_from_spotify_list.s()).apply_async()
+    chain = (extract_spotify_playlist.s(spotify_playlist_id) | search_for_ytb_items_from_spotify_list.s() | extracted_data_processor.s() | check_queued_list.s()).apply_async()
+
     return Response(response=json.dumps({"uuid": chain.id}),
                     status=200,
                     mimetype='application/json')

@@ -103,7 +103,7 @@ class YoutubeDataApiCaller:
 
             for k, v in self._error_msg_identifier_dict.items():
                 if v in error_message:
-                    return YtbApiErrorEnum['k']
+                    return YtbApiErrorEnum[k]
             return YtbApiErrorEnum.UNDEFINED_ERROR
         return False
 
@@ -293,5 +293,5 @@ if __name__ == '__main__':
     respond = test.search_query('test4', check_existing=True)
     logging.debug(respond)
 
-    respond = test.search_query('Whats Going On Astro Nito Onna', check_existing=True)
+    respond = test.search_query('10 hours', check_existing=True)
     logging.debug(respond)

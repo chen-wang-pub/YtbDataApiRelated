@@ -6,3 +6,4 @@ test__*.py
 flask_download_send_file_test/flaskapp/temp_storage
 ffmpeg-static/
 flask_download_send_file_test/flaskapp/ffmpeg-static/
+*.mp3

@@ -136,7 +136,7 @@ class YoutubeDataApiCaller:
 
             for k, v in self._error_msg_identifier_dict.items():
                 if v in error_message:
-                    return YtbApiErrorEnum['k']
+                    return YtbApiErrorEnum[k]
             return YtbApiErrorEnum.UNDEFINED_ERROR
         return False
 
@@ -147,9 +147,9 @@ class YoutubeDataApiCaller:
         for item in searched_items:
             if 'videoId' in item['id']:
                 item_id = item['id']['videoId']
-            elif 'channelId':
+            elif 'channelId' in item['id']:
                 item_id = item['id']['channelId']
-            elif 'playlistId':
+            elif 'playlistId' in item['id']:
                 item_id = item['id']['playlistId']
             item_id_list.append(item_id)
 
@@ -366,8 +366,29 @@ class YoutubeDataApiCaller:
         :return:
         """
 
+        def ranking_list(doc_list):
+            lower_rank = []
+            higher_rank = []
 
-        doc_list = []
+            if len(doc_list) > 1:
+                for query_pair in doc_list[-1]['query_info']:
+                    if query_string in query_pair.values():
+                        pivot = query_pair['relevance_rank']
+
+                for doc in doc_list:
+                    for query_pair in doc['query_info']:
+                        if query_string in query_pair.values():
+                            x = query_pair['relevance_rank']
+                    if x < pivot:
+                        lower_rank.append(doc)
+                    else:
+                        higher_rank.append(doc)
+                return ranking_list(lower_rank) + ranking_list(higher_rank)
+            else:
+                return doc_list
+
+
+
         payload = {'read_filter': {'query_info.query_string': query_string}}
         response = requests.post(url=self.db_dict['read'], data=json.dumps(payload),
                                  headers={'content-type': 'application/json'})
@@ -376,11 +397,13 @@ class YoutubeDataApiCaller:
 
         logging.info('return from get_all_doc_contains_query_string')
         logging.info(docs)
+        docs = ranking_list(docs)
+        logging.info('after sort: {}'.format(docs))
         """for document in docs:
             doc = {'etag': document['etag'], 'kind': document['kind'], 'item_id': document['item_id'],
                    'query_string': [query_string]}
             doc_list.append(doc)"""
-        #return doc_list
+
         return docs
 
 
@@ -403,7 +426,7 @@ class YoutubeDataApiCaller:
         for doc in doc_list:
             item_id = doc['item_id']
             ytb_duration = doc['duration']
-            ytb_sec = isodate.parse_duration(ytb_duration)
+            ytb_sec = isodate.parse_duration(ytb_duration).total_seconds()
             spotify_sec = duration_ms/1000
             if abs(ytb_sec - spotify_sec) <= threshold:
                 return item_id
@@ -471,3 +494,5 @@ if __name__ == '__main__':
 
     respond = test.search_query('48 hours', check_existing=True)
     logging.debug(respond)
+    item_id = YoutubeDataApiCaller.rank_documents(respond, 4320000)
+    logging.debug(item_id)
