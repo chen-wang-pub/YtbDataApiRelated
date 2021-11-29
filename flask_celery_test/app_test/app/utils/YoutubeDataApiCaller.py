@@ -99,7 +99,6 @@ class YoutubeDataApiCaller:
         self.db_dict = generate_db_access_obj(db_name, col_name)
         self.keypool_db_dict = generate_db_access_obj(keypool_db, keypool_col)
         self._max_key = number_of_keys
-        #self._pull_api_key()
 
     @property
     def max_key(self):
@@ -288,11 +287,12 @@ class YoutubeDataApiCaller:
         datetime_str_format = '%Y-%m-%d'
         doc_dict = {'key': key, 'in_use': in_use, 'quota_exceeded': quota_exceeded,
                     'last_update_date': last_update_date.strftime(datetime_str_format)}
+        # logging.debug('api key document generated: {}'.format(doc_dict))
 
         return doc_dict
 
     def _release_all_key(self):
-
+        #logging.debug('release all key is visited: {}'.format(self._available_keys))
         failed_released_key = []
         for key in self._available_keys:
             update_doc = self.generate_document(key, False, False, datetime.datetime.now())
@@ -302,7 +302,7 @@ class YoutubeDataApiCaller:
         if failed_released_key:
             logging.error('error when releasing keys, total {} keys, the keys are {}'.format(
                 len(failed_released_key), failed_released_key))
-
+        self._available_keys = []
     """def __del__(self):
         self._release_all_key()"""
 
@@ -395,10 +395,10 @@ class YoutubeDataApiCaller:
 
         docs = json.loads(response.content.decode('UTF-8'))['response']
 
-        logging.info('return from get_all_doc_contains_query_string')
-        logging.info(docs)
+        logging.debug('return from get_all_doc_contains_query_string')
+        logging.debug(docs)
         docs = ranking_list(docs)
-        logging.info('after sort: {}'.format(docs))
+        logging.debug('after sort: {}'.format(docs))
         """for document in docs:
             doc = {'etag': document['etag'], 'kind': document['kind'], 'item_id': document['item_id'],
                    'query_string': [query_string]}
@@ -478,21 +478,20 @@ if __name__ == '__main__':
     with open('api_keys.yaml', 'r') as f:
         doc = yaml.load(f, Loader=yaml.BaseLoader)
 
-    for api in doc['YTB_API_POOL']:
+    """for api in doc['YTB_API_POOL']:
         logging.debug(api)
         db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
     failed_keys = add_keys_to_db(doc['YTB_API_POOL'], 'KeyPool', 'YoutubeDataApi')#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     if failed_keys:
-        logging.debug(failed_keys)
+        logging.debug(failed_keys)"""
 
     test = YoutubeDataApiCaller()#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
-    a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
-    logging.debug(a)
+    """a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
+    logging.debug(a)"""
 
-    respond = test.search_query('test4', check_existing=True)
+    respond = test.search_query('ffasadas', check_existing=True)
     logging.debug(respond)
-
-    respond = test.search_query('48 hours', check_existing=True)
+    respond = test.search_query('asas', check_existing=True)
     logging.debug(respond)
     item_id = YoutubeDataApiCaller.rank_documents(respond, 4320000)
     logging.debug(item_id)

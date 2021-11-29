@@ -115,9 +115,9 @@ class YoutubeDataApiCaller:
             kind = item['id']['kind']
             if 'videoId' in item['id']:
                 item_id = item['id']['videoId']
-            elif 'channelId':
+            elif 'channelId' in item['id']:
                 item_id = item['id']['channelId']
-            elif 'playlistId':
+            elif 'playlistId' in item['id']:
                 item_id = item['id']['playlistId']
             record_doc = {'etag': etag, 'kind': kind, 'item_id': item_id, 'query_string': [query_string]}
             doc_list.append(record_doc)
@@ -218,7 +218,7 @@ class YoutubeDataApiCaller:
         datetime_str_format = '%Y-%m-%d'
         doc_dict = {'key': key, 'in_use': in_use, 'quota_exceeded': quota_exceeded,
                     'last_update_date': last_update_date.strftime(datetime_str_format)}
-
+        logging.debug('api key document generated: {}'.format(doc_dict))
         return doc_dict
 
     def _release_all_key(self):
@@ -282,16 +282,16 @@ if __name__ == '__main__':
     for api in doc['YTB_API_POOL']:
         logging.debug(api)
         #db_doc = YoutubeDataApiCaller.generate_document(api, False, False, datetime.datetime.now())
-    failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
-    if failed_keys:
-        logging.debug(failed_keys)
+    #failed_keys = add_keys_to_db(doc['YTB_API_POOL'], **api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
+    #if failed_keys:
+        #logging.debug(failed_keys)
 
     test = YoutubeDataApiCaller(**api_key_pool_dict)#'localhost', 27017, 'KeyPool', 'YoutubeDataApi')
     a = YoutubeDataApiCaller.generate_document('tewatwearew', False, False, datetime.datetime.now())
     logging.debug(a)
 
-    respond = test.search_query('test4', check_existing=True)
+    respond = test.search_query('wef', check_existing=True)
     logging.debug(respond)
 
-    respond = test.search_query('10 hours', check_existing=True)
+    respond = test.search_query('sef', check_existing=True)
     logging.debug(respond)
