@@ -65,7 +65,7 @@ def convert_audio( source_file, result_file):
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(10.0, periodic_the_main_thread.s(), name='Check queued video every 10 sec')
-    #sender.add_periodic_task(30.0, periodic_cleaner_thread.s(), name='Clean up every 30 sec')
+    sender.add_periodic_task(30.0, periodic_cleaner_thread.s(), name='Clean up every 30 sec')
 
 @celery.task
 def download_video(ytb_id, download_dir):
