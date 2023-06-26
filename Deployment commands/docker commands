@@ -12,3 +12,5 @@ docker run --name the-redis -d -p 6379:6379 --restart=always -v ~/redisdata:/dat
 
 # for flask blueprint test
 docker run -d -p 5001:5001 --name flask-db-rest --restart=always db-rest
+
+chen@ubuntu:~/PycharmProjects/YtbDataApiRelated/Deployment commands$ sudo docker-compose up

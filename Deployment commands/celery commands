@@ -1,0 +1,4 @@
+start worker and beat:
+~/PycharmProjects/YtbDataApiRelated/flask_celery_test/app_test$ celery -A celery_worker.celery worker --loglevel=info -B
+
+chen@ubuntu:~/PycharmProjects/YtbDataApiRelated/flask_celery_test/app_test$ celery -A celery_worker.celery worker --loglevel=info -B --purge

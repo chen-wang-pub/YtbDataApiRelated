@@ -16,6 +16,7 @@ import requests
 import traceback
 
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -64,7 +65,7 @@ def convert_audio( source_file, result_file):
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(10.0, periodic_the_main_thread.s(), name='Check queued video every 10 sec')
-    sender.add_periodic_task(30.0, periodic_cleaner_thread.s(), name='Clean up every 30 sec')
+    #sender.add_periodic_task(30.0, periodic_cleaner_thread.s(), name='Clean up every 30 sec')
 
 @celery.task
 def download_video(ytb_id, download_dir):
@@ -335,13 +336,19 @@ def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
 @celery.task
 def extract_ytb_channel_videos(channel_id):
     channel_videos_url = "https://www.youtube.com/channel/{}/videos".format(channel_id)
-
+    user_videos_url = "https://www.youtube.com/{}/videos".format(channel_id)
     logger.info('The url of the youtube channel is {}'.format(channel_videos_url))
+    logger.info('The url of the youtube  is {}'.format(user_videos_url))
     driver = webdriver.Remote(command_executor, desired_capabilities=DesiredCapabilities.FIREFOX)
     driver.get(channel_videos_url)
 
     item_xpath = '//*[@id="video-title"]'
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, item_xpath)))
+    try:
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, item_xpath)))
+    except TimeoutException:
+        driver.get(user_videos_url)
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, item_xpath)))
+
     total_music = len(driver.find_elements_by_xpath(item_xpath))
     flag = False
     while not flag:
@@ -363,18 +370,21 @@ def extract_ytb_channel_videos(channel_id):
             flag = True
     # print(driver.page_source)
 
-    logger.debug(total_music)
+    logger.info(total_music)
     playlist_owner = driver.find_element_by_xpath('//*[@id="text-container"]/*[@id="text"]').text
-    logger.debug(playlist_owner)
+    logger.info(playlist_owner)
     all_link = driver.find_elements_by_xpath('//div[@id="dismissible"]')
-    logger.debug(len(all_link))
+    logger.info(len(all_link))
     ytb_doc_list = []
     for a_link in all_link:
         # print(a_link.get_attribute('innerHTML'))
-        title = a_link.find_element_by_xpath('.//*[@id="video-title"]').get_attribute('title')
-        href = a_link.find_element_by_xpath('.//*[@id="video-title"]').get_attribute('href')
+        title = a_link.find_element_by_xpath('.//*[@id="video-title-link"]').get_attribute('title')
+        href = a_link.find_element_by_xpath('.//*[@id="video-title-link"]').get_attribute('href')
         duration = a_link.find_element_by_xpath('.//span[@id="text"]').text
-        view = a_link.find_element_by_xpath('.//*[@id="metadata-line"]/span[1]').text
+        try:
+            view = a_link.find_element_by_xpath('.//*[@id="metadata-line"]/span[1]').text
+        except:
+            view = "unknown views"
         ytb_item_doc = generate_ytb_item_doc(href, title, duration, view)
         logger.debug(ytb_item_doc)
         ytb_doc_list.append(ytb_item_doc)
@@ -382,7 +392,7 @@ def extract_ytb_channel_videos(channel_id):
 
     ytb_channel_db_access_dict = generate_db_access_obj(ytb_playlist_db, channel_id)
 
-    logger.debug('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
+    logger.info('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
 
     item_id_list = []
     used_for_template_rendering = []

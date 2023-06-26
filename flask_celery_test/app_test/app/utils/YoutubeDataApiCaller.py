@@ -365,8 +365,11 @@ class YoutubeDataApiCaller:
         :param col_name:
         :return:
         """
-
+        self.a_counter = 0
         def ranking_list(doc_list):
+            if self.a_counter > 5:
+                return doc_list
+            self.a_counter += 1
             lower_rank = []
             higher_rank = []
 
