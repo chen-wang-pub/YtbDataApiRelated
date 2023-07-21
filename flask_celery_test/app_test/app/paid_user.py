@@ -1,14 +1,18 @@
 import requests
 import os
+import json
+
+
 from flask import Blueprint, request, current_app, Response, json, render_template, flash, redirect, url_for, jsonify, send_file, after_this_request
 from app.forms import LoginForm, RegistrationForm, DownloadRequestForm
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app.models import User
 from app.factory import db
-from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list, extract_ytb_channel_videos, check_queued_list, extracted_data_processor
+from app.tasks import extract_spotify_playlist, search_for_ytb_items_from_spotify_list, extract_ytb_channel_videos, check_queued_list, extracted_data_processor, extract_processed_file
 from app.const import update_url, read_url, write_url, delete_url, TEMP_DIR_LOC
 from app.utils.db_document_related import refresh_status
+from werkzeug.utils import secure_filename
 paid_user = Blueprint("paid_user", __name__)
 
 
@@ -115,6 +119,37 @@ def ytb_channel_videos():
     return Response(response=json.dumps({"uuid": task.id}),
                     status=200,
                     mimetype='application/json')
+
+
+@paid_user.route("/upload")
+def upload():
+
+    return render_template('upload.html')
+
+
+
+
+@paid_user.route('/processed_file', methods=['POST'])
+def processed_file():
+    if request.method == 'POST':
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(url_for('paid_user.upload'))
+        file = request.files['file']
+        # if user does not select file, browser also
+        # submit an empty part without filename
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(url_for('paid_user.upload'))
+        filename = secure_filename(file.filename)
+        full_path = os.path.join(TEMP_DIR_LOC,filename)
+        file.save(full_path)
+        task = (extract_processed_file.s(
+            full_path) | extracted_data_processor.s() | check_queued_list.s()).apply_async()  # extract_ytb_channel_videos.apply_async(args=[ytb_channel_id])
+        return Response(response=json.dumps({"uuid": task.id}),
+                        status=200,
+                        mimetype='application/json')
 
 
 @paid_user.route('/retrieve_file/<item_id>')

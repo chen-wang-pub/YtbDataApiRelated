@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<html>
+<head>
+    <title>Upload Processed file</title>
+</head>
+<body>
+    <p>{
+    "@spinninrecords": {
+        "l_grIXVUHZ0": {
+            "title": "Tungevaag - Sunrise (Club Mix) [Official Audio]",
+            "item_id": "l_grIXVUHZ0",
+            "duration": "2分钟49秒钟",
+            "view": "14,248"
+        },
+        "dFeOeF0Z-_4": {
+            "title": "Teseo - Shake (Official Audio)",
+            "item_id": "dFeOeF0Z-_4",
+            "duration": "2分钟33秒钟",
+            "view": "20,676"
+        }
+        }
+        }</p>
+    <form action = "{{ url_for('paid_user.processed_file') }}" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" />
+        <input type = "submit" value="Upload">
+    </form>
+</body>
+</html>
+{% endblock %}
