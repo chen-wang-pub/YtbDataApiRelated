@@ -334,6 +334,39 @@ def search_for_ytb_items_from_spotify_list(dbaccess_songinfo_dict):
 
 
 @celery.task
+def extract_processed_file(full_filename):
+    processed_dict = {}
+    with open(full_filename, 'r', encoding='utf-8') as f:
+        temp = f.read()
+        processed_dict = json.loads(temp)
+    channel_id = list(processed_dict.keys())[0]
+    keys = processed_dict[channel_id].keys()
+    ytb_doc_list = []
+    for k in keys:
+        record = processed_dict[channel_id][k]
+        ytb_item_doc = generate_ytb_item_doc(record['item_id'], record['title'], record['duration'], record['view'])
+        logger.debug(ytb_item_doc)
+        ytb_doc_list.append(ytb_item_doc)
+    os.remove(full_filename)
+
+    ytb_channel_db_access_dict = generate_db_access_obj(ytb_playlist_db, channel_id)
+
+    logger.info('This ytb channel db access dict is: {}'.format(ytb_channel_db_access_dict))
+
+    item_id_list = []
+    used_for_template_rendering = []
+    number_added_doc = 0
+    for doc in ytb_doc_list:
+        item_id_list.append(doc['item_id'])
+        read_payload = {'read_filter': {'item_id': doc['item_id']}}
+        used_for_template_rendering.append([doc['item_id'], doc['title']])
+        if upload_if_not_exist(doc, read_payload, ytb_channel_db_access_dict['read'], ytb_channel_db_access_dict['write']):
+            number_added_doc += 1
+    return {'ytb_channel_db_access_dict': ytb_channel_db_access_dict, 'item_id_list': item_id_list, 'used_for_template_rendering': used_for_template_rendering}
+
+
+
+@celery.task
 def extract_ytb_channel_videos(channel_id):
     channel_videos_url = "https://www.youtube.com/channel/{}/videos".format(channel_id)
     user_videos_url = "https://www.youtube.com/{}/videos".format(channel_id)
