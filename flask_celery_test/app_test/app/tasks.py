@@ -8,6 +8,7 @@ from celery.utils.log import get_task_logger
 import os
 import subprocess
 import json
+import shutil
 from lxml import html
 from celery.schedules import crontab
 
@@ -89,6 +90,13 @@ def download_video(ytb_id, download_dir):
 
     ytb_base_url = 'https://www.youtube.com/watch?v='
     download_url = '{}{}'.format(ytb_base_url, ytb_id)
+
+    # Pause till free space is roughly greater than 1.5gb
+    while True:
+        total, used, free = shutil.disk_usage("/")
+        if free < 1610612736:
+            logger.warning('Current free space in disk {} KB, download is paused till space is freed. Sleeping 60 sec'.format(free//(2**10)))
+            time.sleep(60)
     try:
         yt = YouTube(download_url, on_complete_callback=on_complete)
         cleaned_filename = yt.title.replace('/','')
@@ -131,7 +139,7 @@ def periodic_the_main_thread():
     for doc in doc_list:
         # check if it's expired
         current_sec = time.time()
-        if (current_sec - int(doc['queued_time'])) > 600:
+        if (current_sec - int(doc['queued_time'])) > MAX_TIMEOUT:
             data = {'delete_filter': {'item_id': doc['item_id']}}
 
             response = requests.delete(url=delete_url, data=json.dumps(data),

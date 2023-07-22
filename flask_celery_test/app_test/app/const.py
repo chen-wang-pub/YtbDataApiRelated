@@ -28,7 +28,7 @@ createindex_url = 'http://localhost:5001/ytbrecordapi/v0/{}/{}/{}/{}/createindex
                                                                              db_info_dict['db_port'],
                                                                              db_info_dict['db_name'],
                                                                              db_info_dict['col_name'])
-MAX_TIMEOUT = 72000
+MAX_TIMEOUT = 120000
 
 TEMP_DIR_LOC = join(dirname(__file__), 'temp_storage')
 
