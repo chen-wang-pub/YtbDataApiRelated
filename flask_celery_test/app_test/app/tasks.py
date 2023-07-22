@@ -97,6 +97,8 @@ def download_video(ytb_id, download_dir):
         if free < 1610612736:
             logger.warning('Current free space in disk {} KB, download is paused till space is freed. Sleeping 60 sec'.format(free//(2**10)))
             time.sleep(60)
+        else:
+            break
     try:
         yt = YouTube(download_url, on_complete_callback=on_complete)
         cleaned_filename = yt.title.replace('/','')
@@ -136,6 +138,12 @@ def periodic_the_main_thread():
                              headers={'content-type': 'application/json'})
     doc_list = response.json()['response']
     # logger.info('{} new download waiting to be started'.format(len(doc_list)))
+
+    total, used, free = shutil.disk_usage("/")
+    if free < 2147483648:
+        logger.warning('Current free space in disk {} KB, dispatching new download is paused. Please free disk space'.format(free//(2**10)))
+        return
+
     for doc in doc_list:
         # check if it's expired
         current_sec = time.time()
